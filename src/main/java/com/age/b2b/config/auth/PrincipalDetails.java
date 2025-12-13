@@ -2,7 +2,10 @@ package com.age.b2b.config.auth;
 
 import com.age.b2b.domain.Admin;
 import com.age.b2b.domain.Client;
+import com.age.b2b.domain.common.ClientStatus;
 import lombok.Getter;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -55,29 +58,33 @@ public class PrincipalDetails implements UserDetails {
 
     // 계정 만료 여부 (true: 만료 안 됨)
     @Override
+    public boolean isAccountNonLocked() {
+        return true; // 여기서 검사 안 함
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true; // 여기서 검사 안 함
+    }
+
+    // 2. 비밀번호가 맞은 후에 실행되는 사후 체크(Post-Check)에서 상태 검사
+    @Override
+    public boolean isCredentialsNonExpired() {
+        if (client != null) {
+            if (client.getApprovalStatus() == ClientStatus.WAITING) {
+                // 비밀번호는 맞았는데, 상태가 WAITING이면 예외 발생
+                throw new DisabledException("아직 승인 대기 중인 계정입니다. 관리자 승인을 기다려주세요.");
+            }
+            if (client.getApprovalStatus() == ClientStatus.REJECTED) {
+                // 비밀번호는 맞았는데, 상태가 REJECTED이면 예외 발생
+                throw new LockedException("가입이 거절된 계정입니다. 관리자에게 문의하세요.");
+            }
+        }
+        return true; // 문제 없으면 통과
+    }
+    @Override
     public boolean isAccountNonExpired() {
         return true;
     }
-
-    // 계정 잠김 여부 (true: 안 잠김)
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    // 비밀번호 만료 여부 (true: 만료 안 됨)
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    // 계정 활성화 여부 (true: 활성화)
-    @Override
-    public boolean isEnabled() {
-        // 필요하다면 여기서 고객사 승인 상태(APPROVED)를 체크해서 false를 리턴할 수도 있음
-        // 하지만 우리는 Service에서 미리 체크하고 예외를 던지는 방식을 썼으므로 여기선 true
-        return true;
-    }
-
 
 }

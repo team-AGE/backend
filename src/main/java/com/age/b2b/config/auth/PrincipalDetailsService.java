@@ -33,20 +33,9 @@ public class PrincipalDetailsService implements UserDetailsService {
         // 2. 고객사 조회
         Optional<Client> clientEntity = clientRepository.findByUsername(username);
         if (clientEntity.isPresent()) {
-            Client client = clientEntity.get();
-
-            // 3. 상태별 예외 분리 (메시지 다르게 설정)
-            if (client.getApprovalStatus() == ClientStatus.WAITING) {
-                // WAITING -> DisabledException (비활성화 상태)
-                throw new DisabledException("아직 승인 대기 중인 계정입니다. 관리자 승인을 기다려주세요.");
-            }
-            else if (client.getApprovalStatus() == ClientStatus.REJECTED) {
-                // REJECTED -> LockedException (잠긴 상태)
-                throw new LockedException("가입이 거절된 계정입니다. 관리자에게 문의하세요.");
-            }
-
-            // APPROVED 상태일 때만 로그인 진행
-            return new PrincipalDetails(client);
+            // ★ 수정: 상태 체크 로직 삭제! 그냥 객체만 리턴하면 됨.
+            // (체크는 PrincipalDetails.isEnabled()에서 자동으로 함)
+            return new PrincipalDetails(clientEntity.get());
         }
 
         throw new UsernameNotFoundException("존재하지 않는 아이디 또는 비밀번호입니다.");

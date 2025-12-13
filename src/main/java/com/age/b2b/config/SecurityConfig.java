@@ -1,9 +1,14 @@
 package com.age.b2b.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -20,7 +25,10 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final ObjectMapper objectMapper; // JSON 변환을 위해 주입 (Spring 기본 Bean)
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -35,49 +43,60 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // 1. CSRF 설정 (개발 초기에는 disable, 운영 시 CookieCsrfTokenRepository 적용 권장)
+                // 1. CSRF 비활성화
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // 2. CORS 설정 (React 연동 필수)
+                // 2. CORS 설정
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 // 3. 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/login").permitAll() // 로그인 경로는 누구나 접근
-                        .requestMatchers("/api/admin/**").hasAnyRole("MASTER", "MANAGER") // 관리자 전용
-                        .requestMatchers("/api/client/**").hasRole("CLIENT") // 고객사 전용
-                        .anyRequest().authenticated() // 그 외는 로그인 필요
+                        .requestMatchers("/api/auth/**", "/api/login").permitAll()
+                        .requestMatchers("/api/admin/**").hasAnyRole("MASTER", "MANAGER")
+                        .requestMatchers("/api/client/**").hasRole("CLIENT")
+                        .anyRequest().authenticated()
                 )
 
-                // 4. 로그인 설정 (React 친화적 JSON 응답)
+                // 4. 로그인 설정 (React 연동 핵심)
                 .formLogin(login -> login
-                        .loginProcessingUrl("/api/login") // 프론트에서 이 주소로 POST 요청 (username, password)
+                        .loginProcessingUrl("/api/login")
                         .usernameParameter("username")
                         .passwordParameter("password")
-                        // 성공 시 리다이렉트 대신 200 OK 리턴
+
+                        // 성공 핸들러
                         .successHandler((request, response, authentication) -> {
                             response.setStatus(HttpServletResponse.SC_OK);
-                            response.getWriter().print("{\"message\": \"Login Success\", \"role\": \"" + authentication.getAuthorities() + "\"}");
+                            response.setContentType("application/json;charset=UTF-8");
+
+                            // 직접 문자열을 만드는 것보다 ObjectMapper를 쓰는 게 안전함
+                            String jsonResponse = objectMapper.writeValueAsString(java.util.Map.of(
+                                    "message", "Login Success",
+                                    "role", authentication.getAuthorities().toString()
+                            ));
+                            response.getWriter().print(jsonResponse);
                         })
-                        // 실패 시 리다이렉트 대신 401 Unauthorized 리턴
+
+                        // 실패 핸들러 (중복 제거됨, 상세 로직만 유지)
                         .failureHandler((request, response, exception) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.getWriter().print("{\"message\": \"Login Failed\"}");
-                        })
-                        .failureHandler((request, response, exception) -> {
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                            response.setContentType("application/json;charset=UTF-8"); // 한글 처리를 위해 필수!
+                            response.setContentType("application/json;charset=UTF-8");
 
-                            // Service에서 던진 예외 메시지 가져오기
-                            String errorMessage = exception.getMessage();
+                            String errorMessage = "로그인 실패";
 
-                            // 만약 비밀번호가 틀린 경우 (BadCredentialsException) 메시지가 영어로 나올 수 있으므로 처리
-                            if (errorMessage.equals("Bad credentials")) {
+                            // 1단계에서 false를 리턴하면 여기서 이 예외들이 잡힘
+                            if (exception instanceof DisabledException) {
+                                errorMessage = "아직 승인 대기 중인 계정입니다. 관리자 승인을 기다려주세요.";
+                            } else if (exception instanceof LockedException) {
+                                errorMessage = "가입이 거절된 계정입니다. 관리자에게 문의하세요.";
+                            } else if (exception instanceof BadCredentialsException) {
                                 errorMessage = "아이디 또는 비밀번호가 일치하지 않습니다.";
                             }
 
-                            // JSON 형태로 응답
-                            response.getWriter().print("{\"message\": \"" + errorMessage + "\"}");
+                            // 프론트엔드가 'error' 키를 기다리고 있으므로 키 값을 'error'로 전송
+                            String jsonResponse = objectMapper.writeValueAsString(java.util.Map.of(
+                                    "error", errorMessage
+                            ));
+                            response.getWriter().print(jsonResponse);
                         })
                         .permitAll()
                 )
@@ -89,34 +108,29 @@ public class SecurityConfig {
                         .deleteCookies("JSESSIONID")
                         .logoutSuccessHandler((request, response, authentication) -> {
                             response.setStatus(HttpServletResponse.SC_OK);
+                            response.getWriter().print("{\"message\": \"Logout Success\"}");
                         })
                 )
 
-                // 6. 예외 처리 (로그인 안 된 사용자가 접근 시 리다이렉트 막기)
+                // 6. 인증 예외 처리 (403 Forbidden 등)
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
-                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+                            // 리다이렉트 없이 401 에러 리턴
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().print("{\"message\": \"Unauthorized - 로그인이 필요합니다.\"}");
                         })
                 );
 
         return http.build();
     }
 
-    // CORS 설정 빈 (React 포트 허용)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // 프론트엔드 주소 허용 (localhost:3000 등)
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
-
-        // 허용할 HTTP 메서드
+        configuration.setAllowedOrigins(List.of("http://localhost:3000")); // React 주소
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
-        // 허용할 헤더
         configuration.setAllowedHeaders(List.of("*"));
-
-        // 중요: 쿠키(세션)를 주고받으려면 true여야 함
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
