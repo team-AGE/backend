@@ -1,7 +1,7 @@
 package com.age.b2b.service;
 
 import com.age.b2b.domain.Product;
-import com.age.b2b.dto.ProductRegisterDto;
+import com.age.b2b.dto.ProductRequestDto;
 import com.age.b2b.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,7 +14,7 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional
-    public Long registerProduct(ProductRegisterDto dto) {
+    public Long registerProduct(ProductRequestDto dto) {
         // 1. 중복 검사 (예시 로직)
         if (productRepository.existsByProductCode(dto.getProductCode())) {
             throw new IllegalArgumentException("이미 존재하는 상품 코드입니다.");

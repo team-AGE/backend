@@ -2,7 +2,7 @@ package com.age.b2b.service;
 
 import com.age.b2b.domain.common.ProductStatus;
 import com.age.b2b.domain.Product;
-import com.age.b2b.dto.ProductRegisterDto;
+import com.age.b2b.dto.ProductRequestDto;
 import com.age.b2b.repository.ProductRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
@@ -19,8 +19,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 @ExtendWith(MockitoExtension.class) // Mockito 사용 설정
 @Slf4j
 class ProductServiceTest {
@@ -34,7 +32,7 @@ class ProductServiceTest {
     @DisplayName("상품 등록 성공 테스트")
     void registerProduct_Success() {
         // given (준비)
-        ProductRegisterDto requestDto = ProductRegisterDto.builder()
+        ProductRequestDto requestDto = ProductRequestDto.builder()
                 .productCode("P-001")
                 .name("비타민C")
                 .consumerPrice(10000)
@@ -70,7 +68,7 @@ class ProductServiceTest {
     @DisplayName("상품 등록 실패 - 중복된 상품 코드")
     void registerProduct_Fail_Duplicate() {
         // given
-        ProductRegisterDto requestDto = ProductRegisterDto.builder()
+        ProductRequestDto requestDto = ProductRequestDto.builder()
                 .productCode("P-001") // 이미 있는 코드라고 가정
                 .name("비타민C")
                 .build();

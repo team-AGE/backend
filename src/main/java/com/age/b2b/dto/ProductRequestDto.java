@@ -10,13 +10,13 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductRegisterDto {
-    private String productCode;
-    private String name;
-    private int consumerPrice;
-    private int supplyPrice;
-    private int costPrice;
-    private String origin;
-    private String description;
-    private ProductStatus status;
+public class ProductRequestDto {
+    private String productCode;   // 상품코드
+    private String name;          // 상품명
+    private int consumerPrice;    // 소비자가
+    private int supplyPrice;      // 공급가
+    private int costPrice;        // 제조원가
+    private String origin;        // 원산지
+    private String description;   // 상품설명
+    private ProductStatus status; // 상품상태 (ON_SALE, TEMPORARY_OUT, DISCONTINUED)
 }
