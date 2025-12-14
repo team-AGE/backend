@@ -1,0 +1,72 @@
+package com.age.b2b.service;
+
+import com.age.b2b.domain.Order;
+import com.age.b2b.domain.common.OrderStatus;
+import com.age.b2b.repository.OrderRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@Transactional
+@RequiredArgsConstructor
+public class AdminOrderService {
+
+    private final OrderRepository orderRepository;
+
+    /**
+     * [본사] 전체 발주 목록 조회 (2-1 메뉴)
+     */
+    @Transactional(readOnly = true)
+    public List<Order> getAllOrders() {
+        return orderRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    /**
+     * [본사] 발주 상태 변경 (출고처리, 배송시작 등)
+     */
+    public void updateOrderStatus(Long orderId, OrderStatus newStatus) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 주문입니다."));
+
+        // 상태 변경 로직 (실무에선 상태 전이 유효성 검사 필요: ex. 배송완료 -> 출고전 불가)
+        order.setStatus(newStatus);
+
+        if (newStatus == OrderStatus.DELIVERED) {
+            order.setDeliveryCompletedAt(LocalDateTime.now());
+        }
+    }
+
+    /**
+     * [본사] 취소 요청 승인 처리 (2-3 메뉴)
+     */
+    public void approveCancel(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문 정보가 없습니다."));
+
+        if (order.getStatus() != OrderStatus.CANCEL_REQUESTED) {
+            throw new IllegalStateException("취소 요청 상태인 주문만 승인 가능합니다.");
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        // TODO: 여기서 재고(ProductLot) 원복 로직 호출 가능
+    }
+
+    /**
+     * [본사] 반품 요청 승인 처리 (2-2 메뉴)
+     */
+    public void approveReturn(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문 정보가 없습니다."));
+
+        if (order.getStatus() != OrderStatus.RETURN_REQUESTED) {
+            throw new IllegalStateException("반품 요청 상태인 주문만 승인 가능합니다.");
+        }
+
+        order.setStatus(OrderStatus.RETURNED);
+        // TODO: 반품된 상품을 폐기 재고(DISPOSAL)나 검수 대기 상태로 입고 잡는 로직 연결
+    }
+}
