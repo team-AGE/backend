@@ -3,6 +3,7 @@ package com.age.b2b.service;
 import com.age.b2b.domain.Product;
 import com.age.b2b.domain.common.ProductStatus;
 import com.age.b2b.dto.ProductRequestDto;
+import com.age.b2b.dto.ProductResponseDto;
 import com.age.b2b.repository.ProductRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
@@ -13,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -113,5 +116,35 @@ class ProductServiceTest {
                     .orElseThrow(() -> new EntityNotFoundException("삭제됨"));
         });
         log.info("상품 삭제 완료 확인");
+    }
+
+    @Test
+    @DisplayName("상품 목록 조회 및 검색 테스트 (엑셀 1-2)")
+    void getProductListTest() {
+        // given
+        productService.saveProduct(createProductDto("P-001", "비타민A"));
+        productService.saveProduct(createProductDto("P-002", "비타민B"));
+        productService.saveProduct(createProductDto("P-003", "홍삼스틱"));
+
+        em.flush();
+        em.clear();
+
+        // when 1: 전체 조회
+        List<ProductResponseDto> allProducts = productService.getProductList(null, null);
+
+        // when 2: "비타민" 검색
+        List<ProductResponseDto> searchProducts = productService.getProductList("비타민", null);
+
+        // then
+        System.out.println("\n================ [엑셀 1-2: 상품 목록 조회] ================");
+        System.out.println("[전체 목록]");
+        allProducts.forEach(p -> System.out.println("상품명: " + p.getName() + ", 코드: " + p.getProductCode() + ", 상태: " + p.getStatus()));
+
+        System.out.println("\n[검색: '비타민']");
+        searchProducts.forEach(p -> System.out.println("검색된 상품: " + p.getName()));
+        System.out.println("========================================================\n");
+
+        assertEquals(3, allProducts.size());
+        assertEquals(2, searchProducts.size()); // 비타민A, 비타민B
     }
 }

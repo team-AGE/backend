@@ -1,10 +1,12 @@
 package com.age.b2b.repository;
 
+import com.age.b2b.domain.Client;
 import com.age.b2b.domain.Order;
 import com.age.b2b.domain.common.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -17,4 +19,11 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     // [본사] 상태별 주문 조회 (예: 취소요청 건만 보기)
     List<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status);
+
+    List<Order> findByClientAndStatusAndCreatedAtBetween(
+            Client client,
+            OrderStatus status,
+            LocalDateTime start,
+            LocalDateTime end
+    );
 }
