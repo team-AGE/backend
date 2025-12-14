@@ -1,88 +1,117 @@
 package com.age.b2b.service;
 
-import com.age.b2b.domain.common.ProductStatus;
 import com.age.b2b.domain.Product;
+import com.age.b2b.domain.common.ProductStatus;
 import com.age.b2b.dto.ProductRequestDto;
 import com.age.b2b.repository.ProductRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.annotation.Transactional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(MockitoExtension.class) // Mockito 사용 설정
+@SpringBootTest
+@Transactional
 @Slf4j
+@TestPropertySource(locations = "classpath:application-test.properties")
 class ProductServiceTest {
-    @InjectMocks // 가짜 객체들을 주입받을 대상 (Service)
-    private ProductService productService;
 
-    @Mock // 가짜 객체로 만들 대상 (Repository)
-    private ProductRepository productRepository;
+    @Autowired ProductService productService;
+    @Autowired ProductRepository productRepository;
+    @Autowired EntityManager em;
 
-    @Test
-    @DisplayName("상품 등록 성공 테스트")
-    void registerProduct_Success() {
-        // given (준비)
-        ProductRequestDto requestDto = ProductRequestDto.builder()
-                .productCode("P-001")
-                .name("비타민C")
+    // 테스트용 DTO 생성 메서드
+    private ProductRequestDto createProductDto(String code, String name) {
+        return ProductRequestDto.builder()
+                .productCode(code)
+                .name(name)
                 .consumerPrice(10000)
                 .supplyPrice(8000)
                 .costPrice(5000)
                 .origin("한국")
-                .description("피로회복에 좋은 비타민")
+                .description("몸에 좋은 비타민")
                 .status(ProductStatus.ON_SALE)
                 .build();
-
-        // repository.save()가 호출되면, ID가 1인 가짜 Product를 리턴하도록 설정
-        Product fakeProduct = new Product();
-        fakeProduct.setId(1L);
-        fakeProduct.setProductCode("P-001");
-
-        // existsByProductCode 호출 시 false 리턴 (중복 없음)
-        given(productRepository.existsByProductCode("P-001")).willReturn(false);
-        // save 호출 시 fakeProduct 리턴
-        given(productRepository.save(any())).willReturn(fakeProduct);
-
-        // when (실행)
-        Long savedId = productService.registerProduct(requestDto);
-
-        // then (검증)
-        assertThat(savedId).isEqualTo(1L); // ID가 1인지 확인
-        log.info("상품 아이디: {}", savedId); // 통과했으면 로그 출력
-        
-        // verify: 실제로 save 메서드가 1번 호출되었는지 확인
-        verify(productRepository, times(1)).save(any());
     }
 
     @Test
-    @DisplayName("상품 등록 실패 - 중복된 상품 코드")
-    void registerProduct_Fail_Duplicate() {
+    @DisplayName("상품 등록 테스트")
+    void saveProductTest() {
         // given
-        ProductRequestDto requestDto = ProductRequestDto.builder()
-                .productCode("P-001") // 이미 있는 코드라고 가정
-                .name("비타민C")
+        ProductRequestDto dto = createProductDto("P-001", "비타민C");
+
+        // when
+        Long savedId = productService.saveProduct(dto);
+
+        // 영속성 컨텍스트 반영
+        em.flush();
+        em.clear();
+
+        // then
+        Product findProduct = productRepository.findById(savedId).orElseThrow();
+        log.info("등록된 상품명: {}", findProduct.getName());
+        log.info("등록된 코드: {}", findProduct.getProductCode());
+
+        assertEquals("비타민C", findProduct.getName());
+        assertEquals("P-001", findProduct.getProductCode());
+    }
+
+    @Test
+    @DisplayName("상품 수정 테스트")
+    void updateProductTest() {
+        // given (먼저 저장)
+        ProductRequestDto saveDto = createProductDto("P-002", "오메가3");
+        Long savedId = productService.saveProduct(saveDto);
+
+        em.flush();
+        em.clear();
+
+        // when (수정 요청)
+        ProductRequestDto updateDto = ProductRequestDto.builder()
+                .name("오메가3 플러스") // 이름 변경
+                .consumerPrice(15000)  // 가격 변경
+                .status(ProductStatus.TEMPORARY_OUT) // 상태 변경
                 .build();
 
-        // existsByProductCode 호출 시 true 리턴 (중복 있음!)
-        given(productRepository.existsByProductCode("P-001")).willReturn(true);
+        productService.updateProduct(savedId, updateDto);
 
-        // when & then (실행 및 예외 검증)
-        // 중복이면 IllegalArgumentException이 터져야 함
-        assertThrows(IllegalArgumentException.class, () -> {
-            productService.registerProduct(requestDto);
+        em.flush();
+        em.clear();
+
+        // then (확인)
+        Product findProduct = productRepository.findById(savedId).orElseThrow();
+        log.info("수정된 상품명: {}", findProduct.getName());
+        log.info("수정된 상태: {}", findProduct.getStatus());
+
+        assertEquals("오메가3 플러스", findProduct.getName());
+        assertEquals(ProductStatus.TEMPORARY_OUT, findProduct.getStatus());
+    }
+
+    @Test
+    @DisplayName("상품 삭제 테스트")
+    void deleteProductTest() {
+        // given
+        ProductRequestDto dto = createProductDto("P-003", "홍삼");
+        Long savedId = productService.saveProduct(dto);
+
+        // when
+        productService.deleteProduct(savedId);
+
+        em.flush();
+        em.clear();
+
+        // then
+        // 삭제해서 없으니까 에러가 터져야 성공
+        assertThrows(EntityNotFoundException.class, () -> {
+            productRepository.findById(savedId)
+                    .orElseThrow(() -> new EntityNotFoundException("삭제됨"));
         });
-
-        // save는 실행되지 않아야 함
-        verify(productRepository, times(0)).save(any());
+        log.info("상품 삭제 완료 확인");
     }
 }

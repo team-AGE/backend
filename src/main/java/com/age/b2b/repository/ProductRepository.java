@@ -2,13 +2,10 @@ package com.age.b2b.repository;
 
 import com.age.b2b.domain.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
-
+@Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
-    // 상품코드 중복 체크용
+    // 상품 코드 중복 체크용 (있으면 true 반환)
     boolean existsByProductCode(String productCode);
-
-    // 상품코드로 조회 (필요 시 사용)
-    Optional<Product> findByProductCode(String productCode);
 }
