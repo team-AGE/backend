@@ -119,7 +119,7 @@ class ProductServiceTest {
     }
 
     @Test
-    @DisplayName("상품 목록 조회 및 검색 테스트 (엑셀 1-2)")
+    @DisplayName("상품 목록 조회 및 검색 테스트")
     void getProductListTest() {
         // given
         productService.saveProduct(createProductDto("P-001", "비타민A"));

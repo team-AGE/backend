@@ -2,6 +2,7 @@ package com.age.b2b.service;
 
 import com.age.b2b.domain.Order;
 import com.age.b2b.domain.common.OrderStatus;
+import com.age.b2b.dto.AdminOrderUpdateDto;
 import com.age.b2b.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -52,7 +53,7 @@ public class AdminOrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
-        // TODO: 여기서 재고(ProductLot) 원복 로직 호출 가능
+        order.setCanceledAt(LocalDateTime.now()); // 취소일자 기록
     }
 
     /**
@@ -67,6 +68,30 @@ public class AdminOrderService {
         }
 
         order.setStatus(OrderStatus.RETURNED);
-        // TODO: 반품된 상품을 폐기 재고(DISPOSAL)나 검수 대기 상태로 입고 잡는 로직 연결
+        order.setReturnedAt(LocalDateTime.now()); // 반품일자 기록
+    }
+
+    public void forceUpdateOrder(AdminOrderUpdateDto dto) {
+        Order order = orderRepository.findById(dto.getOrderId())
+                .orElseThrow(() -> new IllegalArgumentException("주문이 존재하지 않습니다."));
+
+        // 관리자 권한으로 검증 없이 강제 수정
+        if (dto.getStatus() != null) {
+            order.setStatus(dto.getStatus());
+            // 상태에 따라 날짜 자동 갱신 로직 추가 가능
+        }
+
+        if (dto.getTotalAmount() != null) {
+            order.setTotalAmount(dto.getTotalAmount());
+        }
+
+        // 관리자 메모 기능이 있다면 order.setAdminMemo(dto.getMemo());
+    }
+
+    public void forceDeleteOrder(Long orderId) {
+        if (!orderRepository.existsById(orderId)) {
+            throw new IllegalArgumentException("삭제할 주문이 없습니다.");
+        }
+        orderRepository.deleteById(orderId);
     }
 }

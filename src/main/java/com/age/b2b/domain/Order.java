@@ -41,6 +41,9 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 
+    private LocalDateTime canceledAt; // 취소일자
+    private LocalDateTime returnedAt;
+
     // --- 시간 설정 ---
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt; // 발주일자

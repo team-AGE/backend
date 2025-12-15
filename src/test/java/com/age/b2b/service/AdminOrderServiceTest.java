@@ -7,6 +7,7 @@ import com.age.b2b.domain.Product;
 import com.age.b2b.domain.common.ClientStatus;
 import com.age.b2b.domain.common.OrderStatus;
 import com.age.b2b.domain.common.ProductStatus;
+import com.age.b2b.dto.AdminOrderUpdateDto;
 import com.age.b2b.repository.ClientRepository;
 import com.age.b2b.repository.OrderRepository;
 import com.age.b2b.repository.ProductRepository;
@@ -134,5 +135,47 @@ class AdminOrderServiceTest {
         System.out.println("\n================ [엑셀 메뉴 2-3: 취소 승인 결과] ================");
         log.info("발주번호: {}, 변경된 상태: {}", updatedOrder.getOrderNumber(), updatedOrder.getStatus());
         System.out.println("==============================================================\n");
+    }
+
+    @Test
+    @DisplayName("본사 관리자 직권 수정 및 삭제 테스트 (엑셀 필수항목)")
+    void forceUpdateAndDeleteTest() {
+        // given
+        Order order = createTestOrder("직권처리약국", "마그네슘");
+        Long orderId = order.getId();
+
+        em.flush();
+        em.clear();
+
+        // --- 1. 직권 수정 테스트 ---
+        // when
+        AdminOrderUpdateDto updateDto = AdminOrderUpdateDto.builder()
+                .orderId(orderId)
+                .status(OrderStatus.RETURNED) // 강제로 반품처리
+                .totalAmount(0) // 금액을 0원으로 강제 수정 (환불 등)
+                .build();
+
+        adminOrderService.forceUpdateOrder(updateDto);
+
+        em.flush();
+        em.clear();
+
+        // then
+        Order updatedOrder = orderRepository.findById(orderId).orElseThrow();
+        log.info("직권수정 결과: 상태={}, 금액={}", updatedOrder.getStatus(), updatedOrder.getTotalAmount());
+
+        assertEquals(OrderStatus.RETURNED, updatedOrder.getStatus());
+        assertEquals(0, updatedOrder.getTotalAmount());
+
+        // --- 2. 직권 삭제 테스트 ---
+        // when
+        adminOrderService.forceDeleteOrder(orderId);
+
+        em.flush();
+        em.clear();
+
+        // then
+        assertThrows(Exception.class, () -> orderRepository.findById(orderId).orElseThrow());
+        log.info("직권삭제 완료: 조회 시 예외 발생 확인됨");
     }
 }
