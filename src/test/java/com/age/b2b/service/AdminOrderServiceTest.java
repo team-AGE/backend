@@ -94,7 +94,7 @@ class AdminOrderServiceTest {
         // then
         assertEquals(2, orders.size());
 
-        System.out.println("\n================ [엑셀 메뉴 2-1: 발주 목록 조회] ================");
+        System.out.println("\n================ [발주 목록 조회] ================");
         for (Order order : orders) {
             String clientName = order.getClient().getBusinessName();
             for (OrderItem item : order.getOrderItems()) {
@@ -138,7 +138,7 @@ class AdminOrderServiceTest {
     }
 
     @Test
-    @DisplayName("본사 관리자 직권 수정 및 삭제 테스트 (엑셀 필수항목)")
+    @DisplayName("본사 관리자 직권 수정 및 삭제 테스트")
     void forceUpdateAndDeleteTest() {
         // given
         Order order = createTestOrder("직권처리약국", "마그네슘");

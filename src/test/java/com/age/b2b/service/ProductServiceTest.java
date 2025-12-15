@@ -136,7 +136,7 @@ class ProductServiceTest {
         List<ProductResponseDto> searchProducts = productService.getProductList("비타민", null);
 
         // then
-        System.out.println("\n================ [엑셀 1-2: 상품 목록 조회] ================");
+        System.out.println("\n================ [상품 목록 조회] ================");
         System.out.println("[전체 목록]");
         allProducts.forEach(p -> System.out.println("상품명: " + p.getName() + ", 코드: " + p.getProductCode() + ", 상태: " + p.getStatus()));
 
