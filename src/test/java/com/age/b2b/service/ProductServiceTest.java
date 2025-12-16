@@ -138,10 +138,10 @@ class ProductServiceTest {
         // then
         System.out.println("\n================ [엑셀 1-2: 상품 목록 조회] ================");
         System.out.println("[전체 목록]");
-        allProducts.forEach(p -> System.out.println("상품명: " + p.getName() + ", 코드: " + p.getProductCode() + ", 상태: " + p.getStatus()));
+        allProducts.forEach(p -> System.out.println("상품명: " + p.getName() + ", 코드: " + p.getProductCode() + ", 상태: " + p.getStatus() + ", 공급가: " + p.getSupplyPrice() + ", 상품설명: " + p.getDescription() + ", 원산지: " + p.getOrigin()));
 
         System.out.println("\n[검색: '비타민']");
-        searchProducts.forEach(p -> System.out.println("검색된 상품: " + p.getName()));
+        searchProducts.forEach(p -> System.out.println("검색된 상품: " + p.getName() + ", 코드:" + p.getProductCode() + ", 상태:" + p.getStatus() + ", 공급가: " + p.getSupplyPrice() + ", 상품설명: " + p.getDescription() + ", 원산지: " + p.getOrigin()));
         System.out.println("========================================================\n");
 
         assertEquals(3, allProducts.size());

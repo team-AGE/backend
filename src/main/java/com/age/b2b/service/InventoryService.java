@@ -6,6 +6,7 @@ import com.age.b2b.domain.ProductLot;
 import com.age.b2b.domain.common.AdjustmentReason;
 import com.age.b2b.domain.common.StockQuality;
 import com.age.b2b.dto.InboundRequestDto;
+import com.age.b2b.dto.InventoryResponseDto;
 import com.age.b2b.dto.StockAdjustmentDto;
 import com.age.b2b.repository.InventoryLogRepository;
 import com.age.b2b.repository.ProductLotRepository;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -75,6 +78,33 @@ public class InventoryService {
 
         // 4. 이력(Log) 저장
         saveInventoryLog(lot, dto.getChangeQuantity(), dto.getReason(), dto.getNote());
+    }
+
+    /**
+     * [본사] 전채 재고 Lot 목록 조회(4-1 요구사항)
+     */
+    @Transactional(readOnly = true)
+    public List<InventoryResponseDto> getInventoryList(String keyword, String lotNumber, StockQuality status) {
+        List<ProductLot> lots;
+
+        if (keyword != null && !keyword.isBlank()) {
+            // 1. 상품명/코드로 검색
+            lots = productLotRepository.findByProduct_NameContainingOrProduct_ProductCodeContaining(keyword, keyword);
+        } else if (lotNumber != null && !lotNumber.isBlank()) {
+            // 2. Lot 번호로 검색
+            lots = productLotRepository.findByLotNumberContaining(lotNumber);
+        } else if (status != null) {
+            // 3. 재고 상태로 필터링
+            lots = productLotRepository.findByStockQuality(status);
+        } else {
+            // 4. 조건 없으면 기본 전체 조회
+            lots = productLotRepository.findAll();
+        }
+
+        return lots.stream()
+                // DTO 변환 및 반환
+                .map(InventoryResponseDto::from)
+                .collect(Collectors.toList());
     }
 
     // (내부 메서드) 이력 저장 공통화
