@@ -17,7 +17,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // [본사] 전체 주문 목록 조회 (최신순)
     List<Order> findAllByOrderByCreatedAtDesc();
 
-    // [본사] 상태별 주문 조회 (예: 취소요청 건만 보기)
+    // [본사] 상태별 주문 조회 (예: 취소요청 건만 보기, 반품요청 건 조회)
     List<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status);
 
     List<Order> findByClientAndStatusAndCreatedAtBetween(

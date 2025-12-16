@@ -64,4 +64,19 @@ public class Order {
         this.orderItems.add(item);
         item.setOrder(this);
     }
+
+
+    // 반품 관련 필드
+    @Column(name = "return_reason")
+    private String returnReason; // 고객이 입력한 반품 사유
+
+    @Column(name = "returned_at")
+    private LocalDateTime returnedAt; // 반품 완료일자
+
+    // 취소 관련 필드
+    @Column(name = "cancel_reason")
+    private String cancelReason; // 고객이 입력한 취소 사유
+
+    @Column(name = "canceled_at")
+    private LocalDateTime canceledAt; // 취소 완료일자
 }

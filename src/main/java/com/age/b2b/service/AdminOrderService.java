@@ -41,6 +41,15 @@ public class AdminOrderService {
     }
 
     /**
+     * [본사] 취소 목록 조회 (2-3 메뉴)
+     */
+    @Transactional(readOnly = true)
+    public List<Order> getCancelRequestedOrders() {
+        // 반품 요청 상태인 주문만 조회
+        return orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.CANCEL_REQUESTED);
+    }
+
+    /**
      * [본사] 취소 요청 승인 처리 (2-3 메뉴)
      */
     public void approveCancel(Long orderId) {
@@ -56,8 +65,18 @@ public class AdminOrderService {
     }
 
     /**
+     * [본사] 반품 목록 조회 (2-2 메뉴)
+     */
+    @Transactional(readOnly = true)
+    public List<Order> getReturnRequestedOrders() {
+        // 반품 요청 상태인 주문만 조회
+        return orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.RETURN_REQUESTED);
+    }
+
+    /**
      * [본사] 반품 요청 승인 처리 (2-2 메뉴)
      */
+
     public void approveReturn(Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("주문 정보가 없습니다."));
@@ -67,6 +86,7 @@ public class AdminOrderService {
         }
 
         order.setStatus(OrderStatus.RETURNED);
+        order.setReturnedAt(LocalDateTime.now()); // 반품일자 기록
         // TODO: 반품된 상품을 폐기 재고(DISPOSAL)나 검수 대기 상태로 입고 잡는 로직 연결
     }
 }
