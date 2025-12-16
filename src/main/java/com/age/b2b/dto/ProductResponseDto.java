@@ -5,6 +5,8 @@ import com.age.b2b.domain.common.ProductStatus;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDate;
+
 @Getter
 @Builder
 public class ProductResponseDto {
@@ -17,6 +19,8 @@ public class ProductResponseDto {
     private String description;
     private String origin;
 
+    private LocalDate expiryDate;
+
     // Entity -> DTO 변환 메서드 (편의성)
     public static ProductResponseDto from(Product product) {
         return ProductResponseDto.builder()
@@ -27,6 +31,7 @@ public class ProductResponseDto {
                 .status(product.getStatus())
                 .description(product.getDescription())
                 .origin(product.getOrigin())
+                .expiryDate(product.getExpiryDate())
                 .build();
     }
 }

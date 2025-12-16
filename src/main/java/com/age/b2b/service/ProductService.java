@@ -6,6 +6,10 @@ import com.age.b2b.dto.ProductRequestDto;
 import com.age.b2b.dto.ProductResponseDto;
 import com.age.b2b.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,24 +24,31 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
-    public List<ProductResponseDto> getProductList(String keyword, ProductStatus status) {
-        List<Product> products;
+    public Page<ProductResponseDto> getProductList(String keyword, ProductStatus status, int page) {
 
-        // 1. 검색 로직 (검색어가 있으면 검색, 없으면 전체)
+        // 1. 페이징 설정 (한 페이지당 10개, 등록일 역순 정렬)
+        // page: 프론트에서 넘어온 페이지 번호 (0 = 1페이지)
+        // size: 10
+        // Sort: createdAt 내림차순 (최신순)
+        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Product> productPage;
+
+        // 2. 검색 조건에 따른 조회 분기
         if (keyword != null && !keyword.isBlank()) {
-            products = productRepository.findByNameContainingOrProductCodeContaining(keyword, keyword);
+            // 검색어 포함 조회
+            productPage = productRepository.findByNameContainingOrProductCodeContaining(keyword, keyword, pageable);
         } else if (status != null) {
-            // 상태 필터가 있으면 상태로 조회
-            products = productRepository.findByStatus(status);
+            // 상태값 필터 조회
+            productPage = productRepository.findByStatus(status, pageable);
         } else {
-            // 조건 없으면 전체 최신순 조회
-            products = productRepository.findAllByOrderByCreatedAtDesc();
+            // 전체 조회
+            productPage = productRepository.findAll(pageable);
         }
 
-        // 2. DTO 변환 후 리턴
-        return products.stream()
-                .map(ProductResponseDto::from)
-                .collect(Collectors.toList());
+        // 3. 엔티티(Page<Product>) -> DTO(Page<ProductResponseDto>) 변환
+        // map() 함수를 쓰면 내부 내용물만 쏙쏙 변환해줍니다.
+        return productPage.map(ProductResponseDto::from);
     }
 
     // 1. 상품 등록
@@ -57,6 +68,8 @@ public class ProductService {
         product.setDescription(dto.getDescription());
         product.setStatus(ProductStatus.ON_SALE); // 기본값 판매중
 
+        product.setExpiryDate(dto.getExpiryDate());
+
         return productRepository.save(product).getId();
     }
 
@@ -73,6 +86,10 @@ public class ProductService {
         product.setOrigin(dto.getOrigin());
         product.setDescription(dto.getDescription());
         product.setStatus(dto.getStatus());
+
+        if (dto.getExpiryDate() != null) {
+            product.setExpiryDate(dto.getExpiryDate());
+        }
     }
 
     // 3. 상품 삭제

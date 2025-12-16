@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Getter
 @Builder
 @NoArgsConstructor
@@ -19,4 +21,6 @@ public class ProductRequestDto {
     private String origin;        // 원산지
     private String description;   // 상품설명
     private ProductStatus status; // 상품상태 (ON_SALE, TEMPORARY_OUT, DISCONTINUED)
+
+    private LocalDate expiryDate;
 }

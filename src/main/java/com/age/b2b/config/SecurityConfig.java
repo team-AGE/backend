@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -51,9 +52,21 @@ public class SecurityConfig {
 
                 // 3. 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/login").permitAll()
+                        // 1. [공통] 누구나 접근 가능
+                        .requestMatchers("/api/auth/**", "/error", "/images/**").permitAll()
+
+                        // 2. [본사 - 마스터 전용] 가장 강력한 권한 (예: 직권 삭제, 직권 수정)
+                        // MASTER만 접근 가능하도록 먼저 선언
+                        .requestMatchers("/api/admin/master/**").hasRole("MASTER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/admin/**").hasRole("MASTER") // 삭제는 마스터만!
+
+                        // 3. [본사 - 공통] 매니저와 마스터 모두 접근 가능
                         .requestMatchers("/api/admin/**").hasAnyRole("MASTER", "MANAGER")
+
+                        // 4. [고객사] 고객사만 접근 가능
                         .requestMatchers("/api/client/**").hasRole("CLIENT")
+
+                        // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
 
