@@ -18,6 +18,10 @@ public class ProductResponseDto {
     private String productCode;
     private String name;
     private int supplyPrice;
+
+    private int consumerPrice; // 소비자가
+    private int costPrice;     // 제조원가
+
     private ProductStatus status;
     private String description;
     private String origin;
@@ -32,6 +36,8 @@ public class ProductResponseDto {
                 .productCode(product.getProductCode())
                 .name(product.getName())
                 .supplyPrice(product.getSupplyPrice())
+                .consumerPrice(product.getConsumerPrice())
+                .costPrice(product.getCostPrice())
                 .status(product.getStatus())
                 .description(product.getDescription())
                 .origin(product.getOrigin())
