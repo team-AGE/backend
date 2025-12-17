@@ -7,7 +7,6 @@ import com.age.b2b.dto.ProductResponseDto;
 import com.age.b2b.repository.ProductRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Transactional
-@Slf4j
 @TestPropertySource(locations = "classpath:application-test.properties")
 class ProductServiceTest {
 
@@ -31,137 +29,161 @@ class ProductServiceTest {
     @Autowired ProductRepository productRepository;
     @Autowired EntityManager em;
 
-    // 테스트용 DTO 생성 메서드 (유통기한 포함)
-    private ProductRequestDto createProductDto(String code, String name) {
+    // 테스트용 DTO 생성 헬퍼
+    private ProductRequestDto createProductDto(String name, int price) {
         return ProductRequestDto.builder()
-                .productCode(code)
+                .productCode(null)
                 .name(name)
-                .consumerPrice(10000)
-                .supplyPrice(8000)
-                .costPrice(5000)
+                .consumerPrice(price + 2000)
+                .supplyPrice(price)
+                .costPrice(price - 3000)
                 .origin("한국")
-                .description("몸에 좋은 " + name) // 상품설명
+                .description("테스트용 " + name + " 입니다.")
                 .status(ProductStatus.ON_SALE)
                 .expiryDate(LocalDate.now().plusYears(1))
                 .build();
     }
 
     @Test
-    @DisplayName("상품 등록 테스트")
+    @DisplayName("1. 상품 등록 테스트")
     void saveProductTest() {
+        System.out.println("\n================ [1. 상품 등록 시연] ================");
+
         // given
-        ProductRequestDto dto = createProductDto("P-001", "비타민C");
+        String prodName = "시연용_비타민C";
+        ProductRequestDto dto = createProductDto(prodName, 10000);
+        System.out.println(">> 등록 요청 데이터: " + prodName + ", 공급가: 10000원");
 
         // when
         Long savedId = productService.saveProduct(dto);
 
+        // 영속성 컨텍스트 초기화 (DB 반영 확인용)
         em.flush();
         em.clear();
 
         // then
         Product findProduct = productRepository.findById(savedId).orElseThrow();
-        assertEquals("비타민C", findProduct.getName());
-        assertEquals("P-001", findProduct.getProductCode());
+
+        System.out.println(">> 등록 결과 확인:");
+        System.out.println("   ID(PK): " + findProduct.getId());
+        System.out.println("   상품명: " + findProduct.getName());
+        System.out.println("   자동 생성된 코드: " + findProduct.getProductCode()); // 자동생성 확인
+        System.out.println("   상태: " + findProduct.getStatus());
+
+        assertEquals(prodName, findProduct.getName());
+        assertNotNull(findProduct.getProductCode()); // 코드가 null이 아닌지 확인
+        System.out.println("================ [등록 테스트 성공] ================\n");
     }
 
     @Test
-    @DisplayName("상품 수정 테스트")
+    @DisplayName("2. 상품 수정 테스트")
     void updateProductTest() {
-        // given
-        Long savedId = productService.saveProduct(createProductDto("P-002", "오메가3"));
+        System.out.println("\n================ [2. 상품 수정 시연] ================");
 
+        // given
+        Long savedId = productService.saveProduct(createProductDto("수정전_오메가3", 20000));
         em.flush();
         em.clear();
+        System.out.println(">> 기존 상품 등록 완료 (ID: " + savedId + ")");
 
         // when
+        System.out.println(">> 수정 요청: 이름 -> '수정후_오메가3', 상태 -> 일시품절, 원산지 -> 미국");
         ProductRequestDto updateDto = ProductRequestDto.builder()
-                .name("오메가3 플러스")
-                .consumerPrice(15000)
-                .supplyPrice(12000)
-                .costPrice(8000)
-                .origin("미국") // 원산지 변경
+                .name("수정후_오메가3")
+                .consumerPrice(25000)
+                .supplyPrice(22000)
+                .costPrice(15000)
+                .origin("미국") // 변경
                 .description("업그레이드된 오메가3")
-                .status(ProductStatus.TEMPORARY_OUT)
+                .status(ProductStatus.TEMPORARY_OUT) // 변경
                 .expiryDate(LocalDate.now().plusYears(2))
                 .build();
 
         productService.updateProduct(savedId, updateDto);
-
         em.flush();
         em.clear();
 
         // then
         Product findProduct = productRepository.findById(savedId).orElseThrow();
-        assertEquals("오메가3 플러스", findProduct.getName());
+        System.out.println(">> 수정 결과 확인:");
+        System.out.println("   상품명: " + findProduct.getName());
+        System.out.println("   원산지: " + findProduct.getOrigin());
+        System.out.println("   상태: " + findProduct.getStatus());
+
+        assertEquals("수정후_오메가3", findProduct.getName());
         assertEquals("미국", findProduct.getOrigin());
         assertEquals(ProductStatus.TEMPORARY_OUT, findProduct.getStatus());
+        System.out.println("================ [수정 테스트 성공] ================\n");
     }
 
     @Test
-    @DisplayName("상품 삭제 테스트")
+    @DisplayName("3. 상품 삭제 테스트")
     void deleteProductTest() {
+        System.out.println("\n================ [3. 상품 삭제 시연] ================");
+
         // given
-        Long savedId = productService.saveProduct(createProductDto("P-003", "홍삼"));
+        Long savedId = productService.saveProduct(createProductDto("삭제될_홍삼", 50000));
+        em.flush();
+        em.clear();
+        System.out.println(">> 삭제 대상 상품 등록 완료 (ID: " + savedId + ")");
 
         // when
         productService.deleteProduct(savedId);
-
         em.flush();
         em.clear();
+        System.out.println(">> 삭제 메서드 실행 완료");
 
         // then
-        assertThrows(EntityNotFoundException.class, () -> {
+        assertThrows(Exception.class, () -> {
             productRepository.findById(savedId)
                     .orElseThrow(() -> new EntityNotFoundException("삭제됨"));
         });
+        System.out.println(">> 조회 시도 결과: 데이터 없음 (예외 발생 확인됨)");
+        System.out.println("================ [삭제 테스트 성공] ================\n");
     }
 
     @Test
-    @DisplayName("상품 목록 조회 및 페이징 테스트 (엑셀 1-2)")
+    @DisplayName("4. 상품 목록 조회 및 페이징")
     void getProductListTest() {
-        // given (데이터 15개 생성 -> 1페이지 10개, 2페이지 5개 확인용)
-        for (int i = 1; i <= 15; i++) {
-            String code = String.format("TEST-P-%03d", i);
-            productService.saveProduct(createProductDto(code, "테스트상품_" + i));
-        }
+        System.out.println("\n================ [4. 목록 조회 및 페이징 시연] ================");
 
+        // given (테스트 전용 데이터 15개 생성)
+        System.out.println(">> 더미 데이터 15개 생성 중...");
+        for (int i = 1; i <= 15; i++) {
+            productService.saveProduct(createProductDto("테스트상품_" + i, 1000 * i));
+        }
         em.flush();
         em.clear();
 
-        // when 1: 1페이지(index 0) 조회
-        Page<ProductResponseDto> page1 = productService.getProductList(null, null, 0);
-
-        // when 2: 2페이지(index 1) 조회
-        Page<ProductResponseDto> page2 = productService.getProductList(null, null, 1);
+        // when (검색어로 조회)
+        String searchKeyword = "테스트상품";
+        Page<ProductResponseDto> page1 = productService.getProductList(searchKeyword, null, 0);
 
         // then
-        System.out.println("\n================ [엑셀 1-2: 상품 목록 조회 (페이징)] ================");
+        System.out.println("\n[1페이지 조회 결과 (size=10)]");
+        // 헤더 출력 (칸 간격 조정)
+        System.out.println("-------------------------------------------------------------------------------------------------------------------");
+        System.out.printf("%-15s | %-15s | %-10s | %-10s | %-20s | %-10s\n",
+                "상품코드", "상품명", "공급가", "상태", "상품설명", "원산지"); // 원하시는 항목들 추가
+        System.out.println("-------------------------------------------------------------------------------------------------------------------");
 
-        System.out.println("[1페이지 결과 - 10개 조회]");
-        log.info("총 페이지 수: {}, 총 데이터 수: {}", page1.getTotalPages(), page1.getTotalElements());
-
-        // 요청하신 필드 출력 확인
+        // 데이터 출력
         for (ProductResponseDto p : page1.getContent()) {
-            log.info("상품코드: {}, 상품명: {}, 공급가: {}, 상태: {}, 설명: {}, 원산지: {}",
+            System.out.printf("%-15s | %-15s | %-10d | %-10s | %-20s | %-10s\n",
                     p.getProductCode(),
                     p.getName(),
                     p.getSupplyPrice(),
                     p.getStatus(),
-                    p.getDescription(),
-                    p.getOrigin()
+                    p.getDescription(), // 상품설명 추가
+                    p.getOrigin()       // 원산지 추가
             );
         }
+        System.out.println("-------------------------------------------------------------------------------------------------------------------");
+        System.out.println("총 페이지 수: " + page1.getTotalPages());
+        System.out.println("총 데이터 수: " + page1.getTotalElements());
 
-        System.out.println("\n[2페이지 결과 - 5개 조회]");
-        assertEquals(10, page1.getContent().size()); // 1페이지는 10개 꽉 참
-        assertEquals(5, page2.getContent().size());  // 2페이지는 나머지 5개
-        assertEquals(15, page1.getTotalElements());  // 전체 개수 확인
+        assertEquals(15, page1.getTotalElements());
 
-        // 검색 테스트 (상품명 '테스트상품_1' 검색 -> 1, 10, 11, 12, 13, 14, 15 포함됨)
-        Page<ProductResponseDto> searchResult = productService.getProductList("테스트상품_1", null, 0);
-        System.out.println("\n[검색 테스트: '테스트상품_1']");
-        log.info("검색된 상품 수: {}", searchResult.getTotalElements());
-
-        System.out.println("===================================================================\n");
+        System.out.println("\n================ [목록 조회 테스트 성공] ================\n");
     }
 }

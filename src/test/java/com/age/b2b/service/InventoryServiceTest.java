@@ -74,7 +74,7 @@ class InventoryServiceTest {
         ProductLot lot = productLotRepository.findById(lotId).orElseThrow();
         Product findProduct = lot.getProduct(); // Lot과 연결된 상품 조회
 
-        System.out.println("\n================ [엑셀 메뉴트리: 상품/입고 상세 조회] ================");
+        System.out.println("\n================ [상품/입고 상세 조회] ================");
         // 요청하신 포맷대로 로그 출력
         log.info("상품조회: 상품코드: {}, 상품명: {}, 공급가: {}, 소비자가: {}, 상품상태: {}, 상품설명: {}, 원산지: {}",
                 findProduct.getProductCode(),

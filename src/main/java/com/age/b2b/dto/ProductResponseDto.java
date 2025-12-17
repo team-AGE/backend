@@ -10,6 +10,9 @@ import java.time.LocalDate;
 @Getter
 @Builder
 public class ProductResponseDto {
+
+    private Long id;
+
     // 엑셀 1-2 요구사항: 상품코드, 상품명, 공급가, 상품상태, 상품설명, 원산지
     private Long productId; // (수정/삭제용 ID)
     private String productCode;
@@ -24,6 +27,7 @@ public class ProductResponseDto {
     // Entity -> DTO 변환 메서드 (편의성)
     public static ProductResponseDto from(Product product) {
         return ProductResponseDto.builder()
+                .id(product.getId())
                 .productId(product.getId())
                 .productCode(product.getProductCode())
                 .name(product.getName())

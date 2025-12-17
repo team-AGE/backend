@@ -27,8 +27,15 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
+    public ProductResponseDto getProductDetail(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 상품이 존재하지 않습니다. id=" + id));
+        return ProductResponseDto.from(product);
+    }
+
+    @Transactional(readOnly = true)
     public Page<ProductResponseDto> getProductList(String keyword, ProductStatus status, int page) {
-        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.ASC, "createdAt"));
         Page<Product> productPage;
         if (keyword != null && !keyword.isBlank()) {
             productPage = productRepository.findByNameContainingOrProductCodeContaining(keyword, keyword, pageable);
