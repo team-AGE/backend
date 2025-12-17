@@ -35,7 +35,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getProductList(String keyword, ProductStatus status, int page) {
-        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.ASC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Product> productPage;
         if (keyword != null && !keyword.isBlank()) {
             productPage = productRepository.findByNameContainingOrProductCodeContaining(keyword, keyword, pageable);
