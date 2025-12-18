@@ -22,12 +22,11 @@ public interface ProductLotRepository extends JpaRepository<ProductLot, Long> {
 
     // 전체 입고 목록 조회 (최신 입고일 순)
     // Fetch Join을 사용하여 N+1 문제 방지 (Product 정보 같이 가져옴)
-    @Query("SELECT pl FROM ProductLot pl JOIN FETCH pl.product ORDER BY pl.inboundDate DESC")
+    @Query("SELECT pl FROM ProductLot pl JOIN FETCH pl.product")
     Page<ProductLot> findAllWithProduct(Pageable pageable);
 
     // 검색 기능 (상품명 또는 Lot번호로 검색)
     @Query("SELECT pl FROM ProductLot pl JOIN FETCH pl.product p " +
-            "WHERE p.name LIKE %:keyword% OR pl.lotNumber LIKE %:keyword% " +
-            "ORDER BY pl.inboundDate DESC")
+            "WHERE p.name LIKE %:keyword% OR pl.lotNumber LIKE %:keyword%")
     Page<ProductLot> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 }

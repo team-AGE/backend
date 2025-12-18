@@ -1,5 +1,6 @@
 package com.age.b2b.controller;
 
+import com.age.b2b.dto.ReceivingRequestDto;
 import com.age.b2b.dto.ReceivingResponseDto;
 import com.age.b2b.service.ReceivingService;
 import lombok.RequiredArgsConstructor;
@@ -22,5 +23,12 @@ public class ReceivingController {
     ) {
         Page<ReceivingResponseDto> list = receivingService.getReceivingList(keyword, page);
         return ResponseEntity.ok(list);
+    }
+
+    // 입고 등록
+    @PostMapping("/new")
+    public ResponseEntity<String> createReceiving(@RequestBody ReceivingRequestDto dto) {
+        receivingService.createReceiving(dto);
+        return ResponseEntity.ok("입고 등록 완료");
     }
 }

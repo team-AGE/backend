@@ -8,11 +8,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
     // 상품 코드 중복 체크용 (있으면 true 반환)
     boolean existsByProductCode(String productCode);
+
+    Optional<Product> findByProductCode(String productCode);
 
     // 1. 전체 조회 (정렬은 Pageable에서 처리)
     Page<Product> findAll(Pageable pageable);

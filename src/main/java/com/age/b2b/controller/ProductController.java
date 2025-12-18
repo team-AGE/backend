@@ -58,4 +58,11 @@ public class ProductController {
         }
         return ResponseEntity.ok("선택한 상품이 삭제되었습니다.");
     }
+
+    // 상품 코드 체크 API
+    @GetMapping("/check/{code}")
+    public ResponseEntity<String> checkProductCode(@PathVariable String code) {
+        String productName = productService.getProductNameByCode(code);
+        return ResponseEntity.ok(productName);
+    }
 }

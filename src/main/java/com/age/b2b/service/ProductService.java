@@ -27,6 +27,13 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
+    public String getProductNameByCode(String code) {
+        return productRepository.findByProductCode(code)
+                .map(Product::getName)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품코드입니다."));
+    }
+
+    @Transactional(readOnly = true)
     public ProductResponseDto getProductDetail(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 상품이 존재하지 않습니다. id=" + id));
