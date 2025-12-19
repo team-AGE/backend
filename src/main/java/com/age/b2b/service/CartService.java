@@ -4,14 +4,18 @@ import com.age.b2b.domain.Cart;
 import com.age.b2b.domain.CartItem;
 import com.age.b2b.domain.Client;
 import com.age.b2b.domain.Product;
+import com.age.b2b.dto.CartDto;
+import com.age.b2b.repository.CartItemRepository;
 import com.age.b2b.repository.CartRepository;
 import com.age.b2b.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -20,6 +24,7 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
+    private final CartItemRepository cartItemRepository;
 
     // 장바구니 담기
     public void addProductsToCart(Client client, List<String> productCodes) {
@@ -54,5 +59,44 @@ public class CartService {
                 cart.getCartItems().add(newItem);
             }
         }
+    }
+    @Transactional(readOnly = true)
+    public CartDto getCartList(Client client) {
+        Cart cart = cartRepository.findByClient(client).orElse(null);
+
+        if (cart == null) {
+            return CartDto.builder().cartId(null).totalCount(0).items(new ArrayList<>()).build();
+        }
+
+        List<CartDto.CartItemDto> itemDtos = cart.getCartItems().stream()
+                .map(item -> CartDto.CartItemDto.builder()
+                        .itemId(item.getId())
+                        .prodCode(item.getProduct().getProductCode())
+                        .prodName(item.getProduct().getName())
+                        .price(item.getProduct().getSupplyPrice())
+                        .count(item.getCount())
+                        .totalPrice(item.getProduct().getSupplyPrice() * item.getCount())
+                        .build())
+                .collect(Collectors.toList());
+
+        return CartDto.builder()
+                .cartId(cart.getId())
+                .totalCount(itemDtos.size())
+                .items(itemDtos)
+                .build();
+    }
+
+    // 수량 변경
+    public void updateItemCount(Long itemId, int count) {
+        if (count <= 0) throw new IllegalArgumentException("수량은 1개 이상이어야 합니다.");
+
+        CartItem item = cartItemRepository.findById(itemId)
+                .orElseThrow(() -> new IllegalArgumentException("장바구니 아이템이 없습니다."));
+        item.setCount(count);
+    }
+
+    // 장바구니 아이템 삭제
+    public void deleteItem(Long itemId) {
+        cartItemRepository.deleteById(itemId);
     }
 }
