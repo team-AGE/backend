@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,25 +36,4 @@ public class Cart {
     public void prePersist() { this.updatedAt = LocalDateTime.now(); }
     @PreUpdate
     public void preUpdate() { this.updatedAt = LocalDateTime.now(); }
-}
-
-@Entity
-@Getter @Setter
-@NoArgsConstructor
-@Table(name = "cart_items")
-class CartItem {
-
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "cart_item_id")
-    private Long id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cart_id")
-    private Cart cart;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
-    private Product product;
-
-    private int count; // 수량
 }

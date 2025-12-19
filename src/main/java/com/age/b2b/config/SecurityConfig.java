@@ -64,7 +64,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasAnyRole("MASTER", "MANAGER")
 
                         // 4. [고객사] 나머지 고객사 요청은 로그인 필요
-                        .requestMatchers("/api/client/**").hasRole("CLIENT")
+                        .requestMatchers("/api/client/**").hasAnyRole("CLIENT", "MASTER", "MANAGER")
+                        .requestMatchers("/api/partner/**").hasAnyRole("CLIENT", "MASTER", "MANAGER")
 
                         // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
