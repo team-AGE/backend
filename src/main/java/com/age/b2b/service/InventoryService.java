@@ -6,7 +6,6 @@ import com.age.b2b.domain.ProductLot;
 import com.age.b2b.domain.common.AdjustmentReason;
 import com.age.b2b.domain.common.StockQuality;
 import com.age.b2b.dto.InboundRequestDto;
-import com.age.b2b.dto.InventoryResponseDto;
 import com.age.b2b.dto.StockAdjustmentDto;
 import com.age.b2b.repository.InventoryLogRepository;
 import com.age.b2b.repository.ProductLotRepository;
@@ -16,8 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -32,31 +29,44 @@ public class InventoryService {
      * [본사] 상품 입고 처리 (새로운 Lot 생성)
      */
     public Long registerInbound(InboundRequestDto dto) {
-        // 1. 상품 존재 확인
-        Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품입니다."));
+        // 1. 화면에서 입력한 상품코드로 실제 상품이 존재하는지 확인
+        Product product = productRepository.findByProductCode(dto.getProductCode())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품코드입니다."));
 
-        // 2. Lot 생성
+        // 2. 화면 요구사항: Lot 번호 자동 생성
+        String lotNumber = generateLotNumber();
+
+        // 3. 재고(Lot) 엔티티 생성 및 데이터 매핑
         ProductLot lot = new ProductLot();
         lot.setProduct(product);
-        lot.setLotNumber(dto.getLotNumber());
-        lot.setQuantity(dto.getQuantity()); // 초기 수량
+        lot.setLotNumber(lotNumber); // 서버에서 생성한 번호 사용
+        lot.setQuantity(dto.getQuantity());
         lot.setExpiryDate(dto.getExpiryDate());
         lot.setInboundDate(dto.getInboundDate());
 
-        // 유통기한에 따른 상태 자동 설정 (단순 로직 예시)
+        // (선택) 원산지 정보 처리 - ProductLot에 origin 필드가 있다면 주입
+        // lot.setOrigin(dto.getOrigin());
+
+        // 4. 유통기한 기준 상태 자동 판별 (3개월 미만 시 주의재고)
         if (dto.getExpiryDate().isBefore(LocalDate.now().plusMonths(3))) {
-            lot.setStockQuality(StockQuality.CAUTION); // 3개월 미만 주의
+            lot.setStockQuality(StockQuality.CAUTION);
         } else {
             lot.setStockQuality(StockQuality.NORMAL);
         }
 
         ProductLot savedLot = productLotRepository.save(lot);
 
-        // 3. 이력(Log) 저장
-        saveInventoryLog(savedLot, dto.getQuantity(), AdjustmentReason.INBOUND, "최초 입고");
+        // 5. 재고 이력(Log) 저장 (사유: 기초 등록)
+        saveInventoryLog(savedLot, dto.getQuantity(), AdjustmentReason.INBOUND, "기초 재고 등록");
 
         return savedLot.getId();
+    }
+
+    // Lot 번호 생성기 (규칙: LOT-날짜-난수)
+    private String generateLotNumber() {
+        String date = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        int random = java.util.concurrent.ThreadLocalRandom.current().nextInt(100, 999);
+        return "LOT-" + date + "-" + random;
     }
 
     /**
@@ -78,33 +88,6 @@ public class InventoryService {
 
         // 4. 이력(Log) 저장
         saveInventoryLog(lot, dto.getChangeQuantity(), dto.getReason(), dto.getNote());
-    }
-
-    /**
-     * [본사] 전채 재고 Lot 목록 조회(4-1 요구사항)
-     */
-    @Transactional(readOnly = true)
-    public List<InventoryResponseDto> getInventoryList(String keyword, String lotNumber, StockQuality status) {
-        List<ProductLot> lots;
-
-        if (keyword != null && !keyword.isBlank()) {
-            // 1. 상품명/코드로 검색
-            lots = productLotRepository.findByProduct_NameContainingOrProduct_ProductCodeContaining(keyword, keyword);
-        } else if (lotNumber != null && !lotNumber.isBlank()) {
-            // 2. Lot 번호로 검색
-            lots = productLotRepository.findByLotNumberContaining(lotNumber);
-        } else if (status != null) {
-            // 3. 재고 상태로 필터링
-            lots = productLotRepository.findByStockQuality(status);
-        } else {
-            // 4. 조건 없으면 기본 전체 조회
-            lots = productLotRepository.findAll();
-        }
-
-        return lots.stream()
-                // DTO 변환 및 반환
-                .map(InventoryResponseDto::from)
-                .collect(Collectors.toList());
     }
 
     // (내부 메서드) 이력 저장 공통화

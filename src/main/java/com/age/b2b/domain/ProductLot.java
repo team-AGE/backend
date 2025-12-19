@@ -32,6 +32,8 @@ public class ProductLot {
     @Enumerated(EnumType.STRING)
     private StockQuality stockQuality; // 재고상태 (정상, 주의 등)
 
+    private String warehouseLocation;
+
     // --- 시간 설정 ---
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

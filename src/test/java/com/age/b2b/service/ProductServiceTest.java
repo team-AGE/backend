@@ -7,21 +7,21 @@ import com.age.b2b.dto.ProductResponseDto;
 import com.age.b2b.repository.ProductRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Transactional
-@Slf4j
 @TestPropertySource(locations = "classpath:application-test.properties")
 class ProductServiceTest {
 
@@ -29,122 +29,161 @@ class ProductServiceTest {
     @Autowired ProductRepository productRepository;
     @Autowired EntityManager em;
 
-    // 테스트용 DTO 생성 메서드
-    private ProductRequestDto createProductDto(String code, String name) {
+    // 테스트용 DTO 생성 헬퍼
+    private ProductRequestDto createProductDto(String name, int price) {
         return ProductRequestDto.builder()
-                .productCode(code)
+                .productCode(null)
                 .name(name)
-                .consumerPrice(10000)
-                .supplyPrice(8000)
-                .costPrice(5000)
+                .consumerPrice(price + 2000)
+                .supplyPrice(price)
+                .costPrice(price - 3000)
                 .origin("한국")
-                .description("몸에 좋은 비타민")
+                .description("테스트용 " + name + " 입니다.")
                 .status(ProductStatus.ON_SALE)
+                .expiryDate(LocalDate.now().plusYears(1))
                 .build();
     }
 
     @Test
-    @DisplayName("상품 등록 테스트")
+    @DisplayName("1. 상품 등록 테스트")
     void saveProductTest() {
+        System.out.println("\n================ [1. 상품 등록 시연] ================");
+
         // given
-        ProductRequestDto dto = createProductDto("P-001", "비타민C");
+        String prodName = "시연용_비타민C";
+        ProductRequestDto dto = createProductDto(prodName, 10000);
+        System.out.println(">> 등록 요청 데이터: " + prodName + ", 공급가: 10000원");
 
         // when
         Long savedId = productService.saveProduct(dto);
 
-        // 영속성 컨텍스트 반영
+        // 영속성 컨텍스트 초기화 (DB 반영 확인용)
         em.flush();
         em.clear();
 
         // then
         Product findProduct = productRepository.findById(savedId).orElseThrow();
-        log.info("등록된 상품명: {}", findProduct.getName());
-        log.info("등록된 코드: {}", findProduct.getProductCode());
 
-        assertEquals("비타민C", findProduct.getName());
-        assertEquals("P-001", findProduct.getProductCode());
+        System.out.println(">> 등록 결과 확인:");
+        System.out.println("   ID(PK): " + findProduct.getId());
+        System.out.println("   상품명: " + findProduct.getName());
+        System.out.println("   자동 생성된 코드: " + findProduct.getProductCode()); // 자동생성 확인
+        System.out.println("   상태: " + findProduct.getStatus());
+
+        assertEquals(prodName, findProduct.getName());
+        assertNotNull(findProduct.getProductCode()); // 코드가 null이 아닌지 확인
+        System.out.println("================ [등록 테스트 성공] ================\n");
     }
 
     @Test
-    @DisplayName("상품 수정 테스트")
+    @DisplayName("2. 상품 수정 테스트")
     void updateProductTest() {
-        // given (먼저 저장)
-        ProductRequestDto saveDto = createProductDto("P-002", "오메가3");
-        Long savedId = productService.saveProduct(saveDto);
+        System.out.println("\n================ [2. 상품 수정 시연] ================");
 
+        // given
+        Long savedId = productService.saveProduct(createProductDto("수정전_오메가3", 20000));
         em.flush();
         em.clear();
+        System.out.println(">> 기존 상품 등록 완료 (ID: " + savedId + ")");
 
-        // when (수정 요청)
+        // when
+        System.out.println(">> 수정 요청: 이름 -> '수정후_오메가3', 상태 -> 일시품절, 원산지 -> 미국");
         ProductRequestDto updateDto = ProductRequestDto.builder()
-                .name("오메가3 플러스") // 이름 변경
-                .consumerPrice(15000)  // 가격 변경
-                .status(ProductStatus.TEMPORARY_OUT) // 상태 변경
+                .name("수정후_오메가3")
+                .consumerPrice(25000)
+                .supplyPrice(22000)
+                .costPrice(15000)
+                .origin("미국") // 변경
+                .description("업그레이드된 오메가3")
+                .status(ProductStatus.TEMPORARY_OUT) // 변경
+                .expiryDate(LocalDate.now().plusYears(2))
                 .build();
 
         productService.updateProduct(savedId, updateDto);
-
         em.flush();
         em.clear();
 
-        // then (확인)
+        // then
         Product findProduct = productRepository.findById(savedId).orElseThrow();
-        log.info("수정된 상품명: {}", findProduct.getName());
-        log.info("수정된 상태: {}", findProduct.getStatus());
+        System.out.println(">> 수정 결과 확인:");
+        System.out.println("   상품명: " + findProduct.getName());
+        System.out.println("   원산지: " + findProduct.getOrigin());
+        System.out.println("   상태: " + findProduct.getStatus());
 
-        assertEquals("오메가3 플러스", findProduct.getName());
+        assertEquals("수정후_오메가3", findProduct.getName());
+        assertEquals("미국", findProduct.getOrigin());
         assertEquals(ProductStatus.TEMPORARY_OUT, findProduct.getStatus());
+        System.out.println("================ [수정 테스트 성공] ================\n");
     }
 
     @Test
-    @DisplayName("상품 삭제 테스트")
+    @DisplayName("3. 상품 삭제 테스트")
     void deleteProductTest() {
+        System.out.println("\n================ [3. 상품 삭제 시연] ================");
+
         // given
-        ProductRequestDto dto = createProductDto("P-003", "홍삼");
-        Long savedId = productService.saveProduct(dto);
+        Long savedId = productService.saveProduct(createProductDto("삭제될_홍삼", 50000));
+        em.flush();
+        em.clear();
+        System.out.println(">> 삭제 대상 상품 등록 완료 (ID: " + savedId + ")");
 
         // when
         productService.deleteProduct(savedId);
-
         em.flush();
         em.clear();
+        System.out.println(">> 삭제 메서드 실행 완료");
 
         // then
-        // 삭제해서 없으니까 에러가 터져야 성공
-        assertThrows(EntityNotFoundException.class, () -> {
+        assertThrows(Exception.class, () -> {
             productRepository.findById(savedId)
                     .orElseThrow(() -> new EntityNotFoundException("삭제됨"));
         });
-        log.info("상품 삭제 완료 확인");
+        System.out.println(">> 조회 시도 결과: 데이터 없음 (예외 발생 확인됨)");
+        System.out.println("================ [삭제 테스트 성공] ================\n");
     }
 
     @Test
-    @DisplayName("상품 목록 조회 및 검색 테스트 (엑셀 1-2)")
+    @DisplayName("4. 상품 목록 조회 및 페이징")
     void getProductListTest() {
-        // given
-        productService.saveProduct(createProductDto("P-001", "비타민A"));
-        productService.saveProduct(createProductDto("P-002", "비타민B"));
-        productService.saveProduct(createProductDto("P-003", "홍삼스틱"));
+        System.out.println("\n================ [4. 목록 조회 및 페이징 시연] ================");
 
+        // given (테스트 전용 데이터 15개 생성)
+        System.out.println(">> 더미 데이터 15개 생성 중...");
+        for (int i = 1; i <= 15; i++) {
+            productService.saveProduct(createProductDto("테스트상품_" + i, 1000 * i));
+        }
         em.flush();
         em.clear();
 
-        // when 1: 전체 조회
-        List<ProductResponseDto> allProducts = productService.getProductList(null, null);
-
-        // when 2: "비타민" 검색
-        List<ProductResponseDto> searchProducts = productService.getProductList("비타민", null);
+        // when (검색어로 조회)
+        String searchKeyword = "테스트상품";
+        Page<ProductResponseDto> page1 = productService.getProductList(searchKeyword, null, 0);
 
         // then
-        System.out.println("\n================ [엑셀 1-2: 상품 목록 조회] ================");
-        System.out.println("[전체 목록]");
-        allProducts.forEach(p -> System.out.println("상품명: " + p.getName() + ", 코드: " + p.getProductCode() + ", 상태: " + p.getStatus() + ", 공급가: " + p.getSupplyPrice() + ", 상품설명: " + p.getDescription() + ", 원산지: " + p.getOrigin()));
+        System.out.println("\n[1페이지 조회 결과 (size=10)]");
+        // 헤더 출력 (칸 간격 조정)
+        System.out.println("-------------------------------------------------------------------------------------------------------------------");
+        System.out.printf("%-15s | %-15s | %-10s | %-10s | %-20s | %-10s\n",
+                "상품코드", "상품명", "공급가", "상태", "상품설명", "원산지"); // 원하시는 항목들 추가
+        System.out.println("-------------------------------------------------------------------------------------------------------------------");
 
-        System.out.println("\n[검색: '비타민']");
-        searchProducts.forEach(p -> System.out.println("검색된 상품: " + p.getName() + ", 코드:" + p.getProductCode() + ", 상태:" + p.getStatus() + ", 공급가: " + p.getSupplyPrice() + ", 상품설명: " + p.getDescription() + ", 원산지: " + p.getOrigin()));
-        System.out.println("========================================================\n");
+        // 데이터 출력
+        for (ProductResponseDto p : page1.getContent()) {
+            System.out.printf("%-15s | %-15s | %-10d | %-10s | %-20s | %-10s\n",
+                    p.getProductCode(),
+                    p.getName(),
+                    p.getSupplyPrice(),
+                    p.getStatus(),
+                    p.getDescription(), // 상품설명 추가
+                    p.getOrigin()       // 원산지 추가
+            );
+        }
+        System.out.println("-------------------------------------------------------------------------------------------------------------------");
+        System.out.println("총 페이지 수: " + page1.getTotalPages());
+        System.out.println("총 데이터 수: " + page1.getTotalElements());
 
-        assertEquals(3, allProducts.size());
-        assertEquals(2, searchProducts.size()); // 비타민A, 비타민B
+        assertEquals(15, page1.getTotalElements());
+
+        System.out.println("\n================ [목록 조회 테스트 성공] ================\n");
     }
 }

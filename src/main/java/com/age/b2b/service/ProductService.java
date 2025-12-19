@@ -6,10 +6,17 @@ import com.age.b2b.dto.ProductRequestDto;
 import com.age.b2b.dto.ProductResponseDto;
 import com.age.b2b.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,42 +27,57 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
-    public List<ProductResponseDto> getProductList(String keyword, ProductStatus status) {
-        List<Product> products;
+    public String getProductNameByCode(String code) {
+        return productRepository.findByProductCode(code)
+                .map(Product::getName)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품코드입니다."));
+    }
 
-        // 1. 검색 로직 (검색어가 있으면 검색, 없으면 전체)
+    @Transactional(readOnly = true)
+    public ProductResponseDto getProductDetail(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 상품이 존재하지 않습니다. id=" + id));
+        return ProductResponseDto.from(product);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductResponseDto> getProductList(String keyword, ProductStatus status, int page) {
+        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Product> productPage;
         if (keyword != null && !keyword.isBlank()) {
-            products = productRepository.findByNameContainingOrProductCodeContaining(keyword, keyword);
+            productPage = productRepository.findByNameContainingOrProductCodeContaining(keyword, keyword, pageable);
         } else if (status != null) {
-            // 상태 필터가 있으면 상태로 조회
-            products = productRepository.findByStatus(status);
+            productPage = productRepository.findByStatus(status, pageable);
         } else {
-            // 조건 없으면 전체 최신순 조회
-            products = productRepository.findAllByOrderByCreatedAtDesc();
+            productPage = productRepository.findAll(pageable);
         }
-
-        // 2. DTO 변환 후 리턴
-        return products.stream()
-                .map(ProductResponseDto::from)
-                .collect(Collectors.toList());
+        return productPage.map(ProductResponseDto::from);
     }
 
     // 1. 상품 등록
     public Long saveProduct(ProductRequestDto dto) {
-        // 중복 체크
-        if (productRepository.existsByProductCode(dto.getProductCode())) {
-            throw new IllegalStateException("이미 존재하는 상품코드입니다.");
+        // ★ 1. 상품코드 자동 생성 로직 (P + 년월일시분초 + 3자리난수)
+        // 예: P20231217103000123
+        String generatedCode = generateProductCode();
+
+        // 혹시 모를 중복 체크 (거의 희박함)
+        if (productRepository.existsByProductCode(generatedCode)) {
+            throw new IllegalStateException("상품코드 생성 중 충돌이 발생했습니다. 다시 시도해주세요.");
         }
 
         Product product = new Product();
-        product.setProductCode(dto.getProductCode());
+        product.setProductCode(generatedCode); // 생성된 코드 주입
+
         product.setName(dto.getName());
         product.setConsumerPrice(dto.getConsumerPrice());
         product.setSupplyPrice(dto.getSupplyPrice());
         product.setCostPrice(dto.getCostPrice());
         product.setOrigin(dto.getOrigin());
         product.setDescription(dto.getDescription());
-        product.setStatus(ProductStatus.ON_SALE); // 기본값 판매중
+        product.setExpiryDate(dto.getExpiryDate());
+
+        // ★ 2. DTO에서 변환된 상태값 사용
+        product.setStatus(dto.getStatus() != null ? dto.getStatus() : ProductStatus.ON_SALE);
 
         return productRepository.save(product).getId();
     }
@@ -64,19 +86,29 @@ public class ProductService {
     public void updateProduct(Long id, ProductRequestDto dto) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("상품이 없습니다."));
-
-        // 상품 정보 변경
         product.setName(dto.getName());
         product.setConsumerPrice(dto.getConsumerPrice());
         product.setSupplyPrice(dto.getSupplyPrice());
         product.setCostPrice(dto.getCostPrice());
         product.setOrigin(dto.getOrigin());
         product.setDescription(dto.getDescription());
-        product.setStatus(dto.getStatus());
+
+        // 상태값 수정 반영
+        if(dto.getStatus() != null) {
+            product.setStatus(dto.getStatus());
+        }
+        if (dto.getExpiryDate() != null) {
+            product.setExpiryDate(dto.getExpiryDate());
+        }
     }
 
-    // 3. 상품 삭제
     public void deleteProduct(Long id) {
         productRepository.deleteById(id);
+    }
+
+    private String generateProductCode() {
+        String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        int randomNum = ThreadLocalRandom.current().nextInt(100, 1000); // 100~999
+        return "P" + dateTime + randomNum;
     }
 }
