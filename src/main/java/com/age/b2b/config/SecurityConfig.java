@@ -52,18 +52,18 @@ public class SecurityConfig {
 
                 // 3. 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        // 1. [공통] 누구나 접근 가능
+                        // 1. [공통] 누구나 접근 가능 (기존 설정)
                         .requestMatchers("/api/auth/**", "/error", "/images/**").permitAll()
+                        .requestMatchers("/api/client/signup", "/api/client/check", "/api/mail/**").permitAll()
 
-                        // 2. [본사 - 마스터 전용] 가장 강력한 권한 (예: 직권 삭제, 직권 수정)
-                        // MASTER만 접근 가능하도록 먼저 선언
+                        // 2. [본사 - 마스터 전용]
                         .requestMatchers("/api/admin/master/**").hasRole("MASTER")
-                        .requestMatchers(HttpMethod.DELETE, "/api/admin/**").hasRole("MASTER") // 삭제는 마스터만!
+                        .requestMatchers(HttpMethod.DELETE, "/api/admin/**").hasRole("MASTER")
 
-                        // 3. [본사 - 공통] 매니저와 마스터 모두 접근 가능
+                        // 3. [본사 - 공통]
                         .requestMatchers("/api/admin/**").hasAnyRole("MASTER", "MANAGER")
 
-                        // 4. [고객사] 고객사만 접근 가능
+                        // 4. [고객사] 나머지 고객사 요청은 로그인 필요
                         .requestMatchers("/api/client/**").hasRole("CLIENT")
 
                         // 그 외 모든 요청은 인증 필요
