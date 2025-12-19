@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @Transactional
@@ -54,6 +55,22 @@ public class InventoryService {
         saveInventoryLog(savedLot, dto.getQuantity(), AdjustmentReason.INBOUND, "최초 입고");
 
         return savedLot.getId();
+    }
+
+    /**
+     * [본사] 전체 재고 현황 조회
+     */
+    @Transactional(readOnly = true)
+    public List<ProductLot> getAllInventory() {
+        return productLotRepository.findAll();
+    }
+
+    /**
+     * [본사] 특정 상품 재고 현황 조회
+     */
+    @Transactional(readOnly = true)
+    public List<ProductLot> getInventoryByProduct() {
+        return productLotRepository.findByProductIdOrderByExpiryDateAsc();
     }
 
     /**

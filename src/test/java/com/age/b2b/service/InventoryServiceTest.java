@@ -71,8 +71,11 @@ class InventoryServiceTest {
         em.clear();
 
         // then
+        // JPA가 DB에서 데이터를 가져와 new ProductLot()을 수행하여 결과 반환
         ProductLot lot = productLotRepository.findById(lotId).orElseThrow();
-        Product findProduct = lot.getProduct(); // Lot과 연결된 상품 조회
+        // lot이 들고 있던 상품 객체의 주소(참조)를 findProduct라는 변수도 같이 가리키게 함
+        // Lot과 연결된 상품 조회
+        Product findProduct = lot.getProduct();
 
         System.out.println("\n================ [상품/입고 상세 조회] ================");
         // 요청하신 포맷대로 로그 출력

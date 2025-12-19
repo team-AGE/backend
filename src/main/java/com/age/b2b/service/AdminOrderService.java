@@ -42,6 +42,15 @@ public class AdminOrderService {
     }
 
     /**
+     * [본사] 취소 목록 조회 (2-3 메뉴)
+     */
+    @Transactional(readOnly = true)
+    public List<Order> getCancelRequestedOrders() {
+        // 반품 요청 상태인 주문만 조회
+        return orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.CANCEL_REQUESTED);
+    }
+
+    /**
      * [본사] 취소 요청 승인 처리 (2-3 메뉴)
      */
     public void approveCancel(Long orderId) {
@@ -54,6 +63,15 @@ public class AdminOrderService {
 
         order.setStatus(OrderStatus.CANCELLED);
         order.setCanceledAt(LocalDateTime.now()); // 취소일자 기록
+    }
+
+    /**
+     * [본사] 반품 목록 조회 (2-2 메뉴)
+     */
+    @Transactional(readOnly = true)
+    public List<Order> getReturnRequestedOrders() {
+        // 반품 요청 상태인 주문만 조회
+        return orderRepository.findByStatusOrderByCreatedAtDesc(OrderStatus.RETURN_REQUESTED);
     }
 
     /**
