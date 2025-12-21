@@ -56,6 +56,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**", "/error", "/images/**").permitAll()
                         .requestMatchers("/api/client/signup", "/api/client/check", "/api/mail/**").permitAll()
 
+                        .requestMatchers("/api/admin/image/**").permitAll()
+
                         // 2. [본사 - 마스터 전용]
                         .requestMatchers("/api/admin/master/**").hasRole("MASTER")
                         .requestMatchers(HttpMethod.DELETE, "/api/admin/**").hasRole("MASTER")

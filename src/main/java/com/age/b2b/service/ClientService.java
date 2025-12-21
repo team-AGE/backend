@@ -5,6 +5,10 @@ import com.age.b2b.domain.common.ClientStatus;
 import com.age.b2b.dto.ClientSignupDto;
 import com.age.b2b.repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder; // ★ 수정됨
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.UUID;
 
 @Service
@@ -42,7 +47,7 @@ public class ClientService {
         Client client = new Client();
 
         client.setUsername(dto.getUsername());
-        client.setPassword(passwordEncoder.encode(dto.getPassword())); // ★ 암호화 메서드는 동일함
+        client.setPassword(passwordEncoder.encode(dto.getPassword()));
         client.setBusinessName(dto.getBusinessName());
         client.setBusinessNumber(dto.getBusinessNumber());
         client.setOwnerName(dto.getOwnerName());
@@ -78,5 +83,33 @@ public class ClientService {
 
         file.transferTo(new File(fullPath));
         return fullPath;
+    }
+
+    // 1. 가입 대기 목록 조회
+    public Page<Client> getWaitingList(String keyword, Pageable pageable) {
+        if (keyword != null && !keyword.isEmpty()) {
+            return clientRepository.findAllByApprovalStatusAndBusinessNameContaining(
+                    ClientStatus.WAITING, keyword, pageable);
+        }
+        return clientRepository.findAllByApprovalStatus(ClientStatus.WAITING, pageable);
+    }
+
+    // 2. 가입 승인/거절 처리
+    @Transactional
+    public void updateApprovalStatus(Long clientId, String status) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+        if ("APPROVE".equals(status)) {
+            client.setApprovalStatus(ClientStatus.APPROVED);
+        } else if ("REJECT".equals(status)) {
+            client.setApprovalStatus(ClientStatus.REJECTED);
+        }
+    }
+
+    // 3. 이미지 파일 불러오기 (Resource 반환)
+    public Resource getBusinessLicenseImage(String filename) throws MalformedURLException {
+        String fullPath = UPLOAD_DIR + filename;
+        return new UrlResource("file:" + fullPath);
     }
 }
