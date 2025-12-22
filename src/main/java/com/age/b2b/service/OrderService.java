@@ -185,14 +185,13 @@ public class OrderService {
                     .totalQuantity(totalQty)
                     .totalAmount(order.getTotalAmount())
                     .status(convertStatusToKorean(order.getStatus()))
-                    // ★ [수정] getDeliveryDate() -> getDeliveryCompletedAt() 으로 변경
                     .deliveryDate(order.getDeliveryCompletedAt() != null ?
                             order.getDeliveryCompletedAt().toString().substring(0, 10) : "-")
                     .build();
         });
     }
 
-    // [추가] 주문 상세 품목 조회 (모달용)
+    // 주문 상세 품목 조회
     @Transactional(readOnly = true)
     public List<OrderDto.OrderItemDetail> getOrderItems(Long orderId) {
         Order order = orderRepository.findById(orderId)
@@ -226,5 +225,43 @@ public class OrderService {
 
             default -> status.name();
         };
+    }
+
+    // 본사 관리자용 주문 목록 조회
+    @Transactional(readOnly = true)
+    public Page<OrderDto.AdminOrderListResponse> getAdminOrderList(
+            Pageable pageable, String startDateStr, String endDateStr, String keyword) {
+
+        LocalDateTime start = (startDateStr != null && !startDateStr.isEmpty())
+                ? LocalDateTime.parse(startDateStr + "T00:00:00") : null;
+        LocalDateTime end = (endDateStr != null && !endDateStr.isEmpty())
+                ? LocalDateTime.parse(endDateStr + "T23:59:59") : null;
+
+        Page<Order> orders = orderRepository.searchAdminOrders(start, end, keyword, pageable);
+
+        return orders.map(order -> {
+            OrderItem firstItem = order.getOrderItems().isEmpty() ? null : order.getOrderItems().get(0);
+
+            return OrderDto.AdminOrderListResponse.builder()
+                    .orderId(order.getId())
+                    .orderNumber(order.getOrderNumber())
+                    .clientName(order.getClient().getBusinessName()) // 업체명
+                    .createdAt(order.getCreatedAt().toString().replace("T", " ").substring(0, 16))
+                    .repProductCode(firstItem != null ? firstItem.getProduct().getProductCode() : "-")
+                    .repProductName(firstItem != null ? firstItem.getProduct().getName() : "상품 없음")
+                    .itemCount(order.getOrderItems().size())
+                    .totalAmount(order.getTotalAmount())
+                    .status(convertStatusToKorean(order.getStatus()))
+                    .build();
+        });
+    }
+
+    // 본사용 주문 취소 (상태 변경)
+    public void cancelOrdersByAdmin(List<Long> orderIds) {
+        List<Order> orders = orderRepository.findAllById(orderIds);
+        for (Order order : orders) {
+            // 이미 배송중이거나 완료된 건은 취소 불가 체크 로직이 필요하다면 추가
+            order.setStatus(OrderStatus.CANCELLED);
+        }
     }
 }

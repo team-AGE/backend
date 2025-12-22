@@ -55,6 +55,20 @@ public class OrderDto {
         private String deliveryDate;    // 배송완료일자 (없으면 null)
     }
 
+    // 본사 관리자용 주문 목록 DTO
+    @Getter @Builder @AllArgsConstructor
+    public static class AdminOrderListResponse {
+        private Long orderId;
+        private String orderNumber;
+        private String clientName;
+        private String createdAt;
+        private String repProductCode;
+        private String repProductName;
+        private int itemCount;
+        private int totalAmount;
+        private String status;
+    }
+
     // 5. 주문 상세 품목 DTO (모달용)
     @Getter @Builder @AllArgsConstructor
     public static class OrderItemDetail {
