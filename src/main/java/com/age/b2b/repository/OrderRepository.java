@@ -37,9 +37,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT o FROM Order o " +
             "WHERE o.client.clientId = :clientId " +
+            "AND o.status <> 'PENDING' " +
             "AND (:startDate IS NULL OR o.createdAt >= :startDate) " +
             "AND (:endDate IS NULL OR o.createdAt <= :endDate) " +
-            "AND (:keyword IS NULL OR o.orderNumber LIKE %:keyword%)") // 키워드는 주문번호로 검색
+            "AND (:keyword IS NULL OR o.orderNumber LIKE %:keyword%)")
     Page<Order> searchClientOrders(
             @Param("clientId") Long clientId,
             @Param("startDate") LocalDateTime startDate,

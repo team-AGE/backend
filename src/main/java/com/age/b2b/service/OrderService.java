@@ -214,13 +214,16 @@ public class OrderService {
         if (status == null) return "";
         return switch (status) {
             case PENDING -> "결제대기";
+
             case PREPARING -> "상품준비중";
             case SHIPPED -> "배송중";
             case DELIVERED -> "배송완료";
+
             case CANCEL_REQUESTED -> "취소요청";
             case CANCELLED -> "취소완료";
             case RETURN_REQUESTED -> "반품요청";
             case RETURNED -> "반품완료";
+
             default -> status.name();
         };
     }
