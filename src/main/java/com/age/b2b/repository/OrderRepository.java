@@ -3,7 +3,11 @@ package com.age.b2b.repository;
 import com.age.b2b.domain.Client;
 import com.age.b2b.domain.Order;
 import com.age.b2b.domain.common.OrderStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -29,5 +33,18 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             OrderStatus status,
             LocalDateTime start,
             LocalDateTime end
+    );
+
+    @Query("SELECT o FROM Order o " +
+            "WHERE o.client.clientId = :clientId " +
+            "AND (:startDate IS NULL OR o.createdAt >= :startDate) " +
+            "AND (:endDate IS NULL OR o.createdAt <= :endDate) " +
+            "AND (:keyword IS NULL OR o.orderNumber LIKE %:keyword%)") // 키워드는 주문번호로 검색
+    Page<Order> searchClientOrders(
+            @Param("clientId") Long clientId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("keyword") String keyword,
+            Pageable pageable
     );
 }

@@ -9,6 +9,9 @@ import com.age.b2b.service.OrderService;
 import com.age.b2b.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -99,5 +102,26 @@ public class PartnerController {
 
         orderService.verifyAndCompleteTossPayment(paymentKey, orderId, amount);
         return ResponseEntity.ok("결제 완료");
+    }
+
+    // 4. 발주 목록 조회 (검색, 페이징)
+    @GetMapping("/order/list")
+    public ResponseEntity<Page<OrderDto.PartnerOrderListResponse>> getOrderList(
+            @AuthenticationPrincipal PrincipalDetails principal,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseEntity.ok(orderService.getPartnerOrderList(
+                principal.getClient(), pageable, startDate, endDate, keyword));
+    }
+
+    // 5. 발주 상세 품목 조회
+    @GetMapping("/order/{orderId}/items")
+    public ResponseEntity<List<OrderDto.OrderItemDetail>> getOrderItems(
+            @PathVariable Long orderId
+    ) {
+        return ResponseEntity.ok(orderService.getOrderItems(orderId));
     }
 }
