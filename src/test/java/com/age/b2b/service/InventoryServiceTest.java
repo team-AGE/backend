@@ -20,6 +20,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -71,7 +72,9 @@ class InventoryServiceTest {
         em.clear();
 
         // then
-        // JPA가 DB에서 데이터를 가져와 new ProductLot()을 수행하여 결과 반환
+        // JPA가 repository를 호출해서 <> 내부에 적힌 클래스 정보를 보고 어떤 객체를 생성할지 결정
+        // DB에서 데이터를 가져온 후 new ProductLot()을 수행하여 결과 반환
+        // 빈 객체에 DB에서 가져온 값들을 매핑해서 전달
         ProductLot lot = productLotRepository.findById(lotId).orElseThrow();
         // lot이 들고 있던 상품 객체의 주소(참조)를 findProduct라는 변수도 같이 가리키게 함
         // Lot과 연결된 상품 조회
@@ -145,4 +148,64 @@ class InventoryServiceTest {
         );
         System.out.println("===================================================================\n");
     }
+
+    @Test
+    @DisplayName("재고 조회 테스트")
+    void getInventoryTest() {
+        Product product = createProduct("프리미엄 비타민C", "VITA-001");
+
+        InboundRequestDto req = InboundRequestDto.builder()
+                .productId(product.getId())
+                .lotNumber("LOT-20251219")
+                .quantity(100)
+                .inboundDate(LocalDate.now())
+                .expiryDate(LocalDate.now().plusYears(1))
+                .build();
+
+        inventoryService.registerInbound(req);
+
+        em.flush();
+        em.clear();
+
+        // 2. When (재고 조회를 위해 Service의 조회 메서드 호출!)
+        List<ProductLot> inventoryList = inventoryService.getAllInventory();
+
+        // 3. Then (검증)
+        assertFalse(inventoryList.isEmpty(), "조회된 재고 목록이 비어있으면 안됨");
+        assertEquals(1, inventoryList.size(), "등록된 로트는 1개");
+
+        ProductLot lot = inventoryList.get(0);
+
+        // 잔여일수 계산 (유통기한 - 현재날짜)
+        // ChronoUnit.DAYS.between(start, end) => start부터 end까지 며칠이 남았는지 계산합니다.
+        // 만약 유통기한이 오늘보다 미래라면 양수(+), 이미 지났다면 음수(-)가 나옵니다.
+        long daysLeft = ChronoUnit.DAYS.between(LocalDate.now(), lot.getExpiryDate());
+
+        long stockValue = (long)lot.getProduct().getCostPrice() * (long)lot.getQuantity();
+        assertEquals(100, lot.getQuantity());
+        assertEquals("VITA-001", lot.getProduct().getProductCode());
+
+        System.out.println("\n================ [재고 조회] ================");
+        // 요청하신 포맷대로 로그 출력
+//        log.info("조회 결과 - 상품코드: {}, 상품명: {}, Lot번호: {}, 입고일자: {}, 수량: {}, 유통기간: {}, 잔여일수: {}, 재고상태: {}, 재고자산액: {}, 원산지: {}",
+//                lot.getProduct().getProductCode(),
+//                lot.getProduct().getName(),
+//                lot.getLotNumber(),
+//                lot.getInboundDate(),
+//                lot.getQuantity(),
+//                lot.getExpiryDate(),
+//                daysLeft,
+//                lot.getStockQuality(),
+//                stockValue,
+//                lot.getProduct().getOrigin()
+//        );
+        System.out.printf("상품코드: %s | 상품명: %s%n", lot.getProduct().getProductCode(), lot.getProduct().getName());
+        System.out.printf("Lot번호: %s | 입고일자: %s | 현재수량: %d%n", lot.getLotNumber(), lot.getInboundDate(), lot.getQuantity());
+        System.out.printf("유통기한: %s | 잔여일수: %d일 | 재고상태: %s%n", lot.getExpiryDate(), daysLeft, lot.getStockQuality());
+        System.out.printf("재고자산액: %,d원 | 원산지: %s%n", stockValue, lot.getProduct().getOrigin());
+
+        System.out.println("===================================================================\n");
+
+    }
+
 }

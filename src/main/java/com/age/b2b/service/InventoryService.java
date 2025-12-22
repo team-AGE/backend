@@ -60,17 +60,20 @@ public class InventoryService {
     /**
      * [본사] 전체 재고 현황 조회
      */
+    // 화면에 재고 목록을 Table 형태로 보여줘야 하므로, 하나가 아닌 여러 개의 데이터 객체가 담긴 List 사용
     @Transactional(readOnly = true)
     public List<ProductLot> getAllInventory() {
-        return productLotRepository.findAll();
+        List<ProductLot> list = productLotRepository.findAll();
+        System.out.println(">>> DB에서 가져온 데이터 개수: " + list.size()); // 이거 추가
+        return list;
     }
 
     /**
      * [본사] 특정 상품 재고 현황 조회
      */
     @Transactional(readOnly = true)
-    public List<ProductLot> getInventoryByProduct() {
-        return productLotRepository.findByProductIdOrderByExpiryDateAsc();
+    public List<ProductLot> getInventoryByProduct(Long productId) {
+        return productLotRepository.findByProductId(productId);
     }
 
     /**

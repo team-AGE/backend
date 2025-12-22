@@ -19,7 +19,8 @@ public class ProductLot {
     private Long id;
 
     // [LAZY] 상품 정보가 필요할 때만 조회 (성능 최적화)
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
+//    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
     private Product product;
 
