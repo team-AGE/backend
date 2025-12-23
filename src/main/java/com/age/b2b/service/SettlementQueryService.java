@@ -8,6 +8,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.age.b2b.domain.Client;
+import com.age.b2b.repository.ClientRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -15,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SettlementQueryService {
 
     private final SettlementRepository settlementRepository;
-
+    private final ClientRepository clientRepository;
     /**
      * 정산관리 화면 목록 조회 (페이징 처리)
      *
@@ -24,7 +26,8 @@ public class SettlementQueryService {
      * @param keyword
      * @return DTO로 변환된 페이징 객체
      */
-    public Page<SettlementListDto> getSettlementList(int page, int size, String keyword) {
+    public Page<SettlementListDto> getSettlementList(String username,int page, int size, String keyword) {
+        Client client = clientRepository.findByUsername(username).orElseThrow(()->new RuntimeException("해당 사용자를 찾을 수 없습니다."));
 
         // 페이지 번호가 음수가 되지 않도록 방어 로직 추가
         int safePage = Math.max(page, 0);
@@ -35,6 +38,6 @@ public class SettlementQueryService {
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
         // Repository의 커스텀 @Query 호출
-        return settlementRepository.findSettlementList(keyword,pageable);
+        return settlementRepository.findSettlementList(client.getClientId(),keyword,pageable);
     }
 }
