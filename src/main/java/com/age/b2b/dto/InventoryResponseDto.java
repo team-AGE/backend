@@ -5,43 +5,62 @@ import com.age.b2b.domain.common.StockQuality;
 import lombok.Builder;
 import lombok.Getter;
 
-
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
 @Getter
 @Builder
 public class InventoryResponseDto {
-    // 1. 상품 정보
     private String productCode;
     private String productName;
     private String origin;
     private int costPrice;
 
-
-    // 2. lot 정보
     private Long productLotId;
     private String lotNumber;
     private LocalDate inboundDate;
     private LocalDate expiredDate;
-    private int quantity;         // 현재 수량
-    private StockQuality status;  // 재고 상태
+    private int quantity;
+    private StockQuality status;
 
-    // 3. 계산된 정보
-    private long inventoryIdAssetValue;  // 재고자산액 (수량 * 원가)
-    private long remainingDays;          // 잔여 재고일 (유통기간까지 남은 일수)
+    private long inventoryIdAssetValue;
+    private long remainingDays;
 
-    // Entity -> DTO 변환 메서드
+    // ★ [수정됨] 에러 방지용 안전한 변환 메서드
     public static InventoryResponseDto from(ProductLot lot) {
-        long remainingDays = ChronoUnit.DAYS.between(LocalDate.now(), lot.getExpiryDate());
-        long assetValue = (long) lot.getQuantity() * lot.getProduct().getCostPrice();
+
+        // 1. 날짜 계산 (Null이면 0일 처리)
+        long remainingDays = 0;
+        if (lot.getExpiryDate() != null) {
+            remainingDays = ChronoUnit.DAYS.between(LocalDate.now(), lot.getExpiryDate());
+        }
+
+        // 2. 상품 정보 가져오기 (연결된 상품이 없어도 에러 안 나게 처리)
+        String pCode = "UNKNOWN";
+        String pName = "상품정보없음";
+        String pOrigin = "-";
+        int cost = 0;
+
+        // product가 null이 아닐 때만 가져옴
+        if (lot.getProduct() != null) {
+            pCode = lot.getProduct().getProductCode();
+            pName = lot.getProduct().getName();
+            pOrigin = lot.getProduct().getOrigin();
+            cost = lot.getProduct().getCostPrice();
+        } else {
+            // 비상용: Lot에 저장된 코드라도 사용
+            if (lot.getProductCode() != null) pCode = lot.getProductCode();
+        }
+
+        // 3. 자산액 계산
+        long assetValue = (long) lot.getQuantity() * cost;
 
         return InventoryResponseDto.builder()
                 .productLotId(lot.getId())
-                .productCode(lot.getProduct().getProductCode())
-                .productName(lot.getProduct().getName())
-                .origin(lot.getProduct().getOrigin())
-                .costPrice(lot.getProduct().getCostPrice())
+                .productCode(pCode)
+                .productName(pName)
+                .origin(pOrigin)
+                .costPrice(cost)
                 .lotNumber(lot.getLotNumber())
                 .inboundDate(lot.getInboundDate())
                 .expiredDate(lot.getExpiryDate())
@@ -51,5 +70,4 @@ public class InventoryResponseDto {
                 .remainingDays(remainingDays)
                 .build();
     }
-
 }

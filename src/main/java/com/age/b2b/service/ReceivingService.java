@@ -52,9 +52,12 @@ public class ReceivingService {
         // 2. Lot 번호 생성 (LOT-년월일-난수) -> 이게 입고번호 역할
         String lotNumber = generateLotNumber();
 
-        // 3. 엔티티 생성 및 저장
+
+
+        // 3. 엔티티 생성 및 저장 (추가) 상품코드
         ProductLot lot = new ProductLot();
         lot.setProduct(product);
+        lot.setProductCode(product.getProductCode());
         lot.setLotNumber(lotNumber);
         lot.setQuantity(dto.getQty());
         lot.setExpiryDate(dto.getExpireDate());

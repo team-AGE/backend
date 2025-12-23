@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -51,9 +52,24 @@ public class SecurityConfig {
 
                 // 3. 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/login").permitAll()
+                        // 1. [공통] 누구나 접근 가능 (기존 설정)
+                        .requestMatchers("/api/auth/**", "/error", "/images/**").permitAll()
+                        .requestMatchers("/api/client/signup", "/api/client/check", "/api/mail/**").permitAll()
+
+                        .requestMatchers("/api/inventory/**").permitAll()
+
+                        // 2. [본사 - 마스터 전용]
+                        .requestMatchers("/api/admin/master/**").hasRole("MASTER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/admin/**").hasRole("MASTER")
+
+                        // 3. [본사 - 공통]
                         .requestMatchers("/api/admin/**").hasAnyRole("MASTER", "MANAGER")
-                        .requestMatchers("/api/client/**").hasRole("CLIENT")
+
+                        // 4. [고객사] 나머지 고객사 요청은 로그인 필요
+                        .requestMatchers("/api/client/**").hasAnyRole("CLIENT", "MASTER", "MANAGER")
+                        .requestMatchers("/api/partner/**").hasAnyRole("CLIENT", "MASTER", "MANAGER")
+
+                        // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
 

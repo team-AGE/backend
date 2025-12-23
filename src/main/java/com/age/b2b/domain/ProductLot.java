@@ -19,9 +19,14 @@ public class ProductLot {
     private Long id;
 
     // [LAZY] 상품 정보가 필요할 때만 조회 (성능 최적화)
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
+//    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
     private Product product;
+
+    // ★ [이 부분이 빠져서 에러가 났습니다. 다시 추가해주세요!]
+    @Column(name = "product_code")
+    private String productCode;
 
     private String lotNumber; // Lot 번호
     private int quantity;     // 현재 수량
@@ -32,7 +37,6 @@ public class ProductLot {
     @Enumerated(EnumType.STRING)
     private StockQuality stockQuality; // 재고상태 (정상, 주의 등)
 
-    private String warehouseLocation;
 
     // --- 시간 설정 ---
     @Column(name = "created_at", updatable = false)

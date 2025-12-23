@@ -175,7 +175,7 @@ class InventoryServiceTest {
         em.clear();
 
         // when
-        List<InventoryResponseDto> inventoryList = inventoryService.getInventoryList(null, null, null);
+        List<InventoryResponseDto> inventoryList = inventoryService.getInventoryList();
 
         // then
         assertEquals(2, inventoryList.size());

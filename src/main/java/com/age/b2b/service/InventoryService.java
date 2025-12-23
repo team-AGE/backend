@@ -6,6 +6,7 @@ import com.age.b2b.domain.ProductLot;
 import com.age.b2b.domain.common.AdjustmentReason;
 import com.age.b2b.domain.common.StockQuality;
 import com.age.b2b.dto.InboundRequestDto;
+import com.age.b2b.dto.InventoryResponseDto;
 import com.age.b2b.dto.StockAdjustmentDto;
 import com.age.b2b.repository.InventoryLogRepository;
 import com.age.b2b.repository.ProductLotRepository;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -26,28 +29,32 @@ public class InventoryService {
     private final InventoryLogRepository inventoryLogRepository;
 
     /**
-     * [본사] 상품 입고 처리 (새로운 Lot 생성)
+     * [본사] 상품 입고 및 기초재고 등록
      */
+    @Transactional
     public Long registerInbound(InboundRequestDto dto) {
-        // 1. 화면에서 입력한 상품코드로 실제 상품이 존재하는지 확인
+        // 1. 상품 존재 확인
         Product product = productRepository.findByProductCode(dto.getProductCode())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품코드입니다."));
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품코드입니다: " + dto.getProductCode()));
 
-        // 2. 화면 요구사항: Lot 번호 자동 생성
+        // ★ [수정] 사용자가 입력한 원산지가 있으면, 상품 정보를 업데이트합니다!
+        if (dto.getOrigin() != null && !dto.getOrigin().isBlank()) {
+            product.setOrigin(dto.getOrigin()); // "캐나다" -> "한국"으로 변경됨
+        }
+
+        // 2. Lot 번호 생성
         String lotNumber = generateLotNumber();
 
-        // 3. 재고(Lot) 엔티티 생성 및 데이터 매핑
+        // 3. Entity 생성
         ProductLot lot = new ProductLot();
         lot.setProduct(product);
-        lot.setLotNumber(lotNumber); // 서버에서 생성한 번호 사용
+        lot.setProductCode(product.getProductCode());
+        lot.setLotNumber(lotNumber);
         lot.setQuantity(dto.getQuantity());
         lot.setExpiryDate(dto.getExpiryDate());
-        lot.setInboundDate(dto.getInboundDate());
+        lot.setInboundDate(dto.getInboundDate() != null ? dto.getInboundDate() : LocalDate.now());
 
-        // (선택) 원산지 정보 처리 - ProductLot에 origin 필드가 있다면 주입
-        // lot.setOrigin(dto.getOrigin());
-
-        // 4. 유통기한 기준 상태 자동 판별 (3개월 미만 시 주의재고)
+        // 4. 상태 판별 (3개월 미만 주의)
         if (dto.getExpiryDate().isBefore(LocalDate.now().plusMonths(3))) {
             lot.setStockQuality(StockQuality.CAUTION);
         } else {
@@ -56,49 +63,62 @@ public class InventoryService {
 
         ProductLot savedLot = productLotRepository.save(lot);
 
-        // 5. 재고 이력(Log) 저장 (사유: 기초 등록)
-        saveInventoryLog(savedLot, dto.getQuantity(), AdjustmentReason.INBOUND, "기초 재고 등록");
+        // 5. 로그 저장
+        saveInventoryLog(savedLot, dto.getQuantity(), AdjustmentReason.INBOUND, "입고/기초등록");
 
         return savedLot.getId();
     }
 
-    // Lot 번호 생성기 (규칙: LOT-날짜-난수)
     private String generateLotNumber() {
         String date = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
-        int random = java.util.concurrent.ThreadLocalRandom.current().nextInt(100, 999);
+        int random = java.util.concurrent.ThreadLocalRandom.current().nextInt(1000, 10000);
         return "LOT-" + date + "-" + random;
     }
 
     /**
-     * [본사] 재고 조정 (파손, 분실, 폐기 등)
+     * [본사] 전체 재고 현황 조회 (DTO 반환)
+     */
+    @Transactional(readOnly = true)
+    public List<InventoryResponseDto> getInventoryList() {
+        List<ProductLot> lots = productLotRepository.findAll();
+
+        // Entity(원본) -> DTO(화면용) 변환
+        return lots.stream()
+                .map(InventoryResponseDto::from)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * [본사] 특정 상품 재고 조회 (빠져있던 메서드 추가됨)
+     */
+    @Transactional(readOnly = true)
+    public List<ProductLot> getInventoryByProduct(Long productId) {
+        return productLotRepository.findByProductId(productId);
+    }
+
+    /**
+     * [본사] 재고 조정
      */
     public void adjustStock(StockAdjustmentDto dto) {
-        // 1. Lot 조회
         ProductLot lot = productLotRepository.findById(dto.getProductLotId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 Lot입니다."));
 
-        // 2. 수량 변경 검증 (출고/폐기 시 재고 부족 체크)
         int newQuantity = lot.getQuantity() + dto.getChangeQuantity();
         if (newQuantity < 0) {
-            throw new IllegalStateException("재고가 부족하여 처리할 수 없습니다. 현재: " + lot.getQuantity());
+            throw new IllegalStateException("재고 부족. 현재: " + lot.getQuantity());
         }
 
-        // 3. 수량 업데이트
         lot.setQuantity(newQuantity);
-
-        // 4. 이력(Log) 저장
         saveInventoryLog(lot, dto.getChangeQuantity(), dto.getReason(), dto.getNote());
     }
 
-    // (내부 메서드) 이력 저장 공통화
     private void saveInventoryLog(ProductLot lot, int changeQty, AdjustmentReason reason, String note) {
         InventoryLog log = new InventoryLog();
         log.setProductLot(lot);
         log.setChangeQuantity(changeQty);
-        log.setCurrentQuantity(lot.getQuantity()); // 변경 후 최종 수량 스냅샷
+        log.setCurrentQuantity(lot.getQuantity());
         log.setReason(reason);
         log.setNote(note);
-
         inventoryLogRepository.save(log);
     }
 }
