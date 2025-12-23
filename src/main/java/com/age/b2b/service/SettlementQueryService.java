@@ -1,5 +1,6 @@
 package com.age.b2b.service;
 
+import com.age.b2b.dto.AdminSettlementListDto;
 import com.age.b2b.dto.SettlementListDto;
 import com.age.b2b.repository.SettlementRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,31 +14,36 @@ import com.age.b2b.repository.ClientRepository;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true) // 조회 전용이므로 성능 최적화를 위해 readOnly 적용
+@Transactional(readOnly = true)
 public class SettlementQueryService {
 
     private final SettlementRepository settlementRepository;
     private final ClientRepository clientRepository;
+
     /**
-     * 정산관리 화면 목록 조회 (페이징 처리)
-     *
-     * @param page    요청 페이지 번호 (0부터 시작)
-     * @param size    한 페이지당 보여줄 데이터 개수
-     * @param keyword
-     * @return DTO로 변환된 페이징 객체
+     * [고객사 전용] 정산관리 화면 목록 조회
      */
-    public Page<SettlementListDto> getSettlementList(String username,int page, int size, String keyword) {
-        Client client = clientRepository.findByUsername(username).orElseThrow(()->new RuntimeException("해당 사용자를 찾을 수 없습니다."));
+    public Page<SettlementListDto> getSettlementList(String username, int page, int size, String keyword) {
+        Client client = clientRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("해당 사용자를 찾을 수 없습니다."));
 
-        // 페이지 번호가 음수가 되지 않도록 방어 로직 추가
-        int safePage = Math.max(page, 0);
-        // 한 페이지당 사이즈가 0 이하일 경우 기본값 10 설정
-        int safeSize = size > 0 ? size : 10;
+        Pageable pageable = PageRequest.of(Math.max(page, 0), size > 0 ? size : 10);
 
-        // 페이징 정보 생성
-        Pageable pageable = PageRequest.of(safePage, safeSize);
+        // 특정 고객사의 ID로 필터링하여 조회
+        return settlementRepository.findSettlementList(client.getClientId(), keyword, pageable);
+    }
 
-        // Repository의 커스텀 @Query 호출
-        return settlementRepository.findSettlementList(client.getClientId(),keyword,pageable);
+    /**
+     * [본사 관리자 전용] 시스템 전체 정산현황 조회 (4개 테이블 조인)
+     * 본사는 모든 고객사의 데이터를 봐야 하므로 client 조회가 필요 없습니다.
+     */
+    public Page<AdminSettlementListDto> getAdminSettlementList(int page, int size, String keyword) {
+
+        // 페이징 설정
+        Pageable pageable = PageRequest.of(Math.max(page, 0), size > 0 ? size : 10);
+
+        // 모든 고객사의 데이터를 가져오는 Repository 메서드 호출
+        // (Settlement + Order + Product + Client 조인 쿼리)
+        return settlementRepository.findAllSettlementList(keyword, pageable);
     }
 }
