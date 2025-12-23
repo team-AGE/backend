@@ -42,6 +42,9 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 
+    private String cancelReason;  // 취소 사유 (단순변심, 배송지연 등)
+    private String cancelDetail;  // 취소 상세 사유 (사용자 입력 텍스트)
+
     private LocalDateTime canceledAt; // 취소일자
     private LocalDateTime returnedAt;
 
@@ -63,7 +66,7 @@ public class Order {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // 연관관계 편의 메서드 (코드 짤 때 편함)
+    // 연관관계 편의 메서드
     public void addOrderItem(OrderItem item) {
         this.orderItems.add(item);
         item.setOrder(this);
@@ -72,10 +75,5 @@ public class Order {
     // 반품 관련 필드
     @Column(name = "return_reason")
     private String returnReason; // 고객이 입력한 반품 사유
-
-
-    // 취소 관련 필드
-    @Column(name = "cancel_reason")
-    private String cancelReason; // 고객이 입력한 취소 사유
 
 }

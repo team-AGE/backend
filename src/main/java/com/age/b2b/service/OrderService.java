@@ -29,6 +29,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final CartItemRepository cartItemRepository;
     private final CartRepository cartRepository;
+    private final ProductRepository productRepository;
 
     private final String TOSS_SECRET_KEY = "test_sk_XZYkKL4MrjBYmdBMpbB1r0zJwlEW";
 
@@ -46,9 +47,6 @@ public class OrderService {
 
     // 2. 주문 생성 (결제 전 PENDING)
     public OrderDto.OrderResponse createOrder(Client client, OrderDto.OrderRequest request) {
-        List<CartItem> cartItems = cartItemRepository.findAllById(request.getCartItemIds());
-        if (cartItems.isEmpty()) throw new IllegalArgumentException("주문할 상품이 없습니다.");
-
         Order order = new Order();
         order.setClient(client);
         order.setOrderNumber(generateOrderNumber());
@@ -61,26 +59,54 @@ public class OrderService {
 
         int totalAmount = 0;
         String firstProductName = "";
+        int itemsCount = 0;
 
-        for (int i = 0; i < cartItems.size(); i++) {
-            CartItem cartItem = cartItems.get(i);
-            Product product = cartItem.getProduct();
+        // [Case A] 장바구니를 통한 주문인 경우 (기존 로직)
+        if (request.getCartItemIds() != null && !request.getCartItemIds().isEmpty()) {
+            List<CartItem> cartItems = cartItemRepository.findAllById(request.getCartItemIds());
+            if (cartItems.isEmpty()) {
+                throw new IllegalArgumentException("주문할 장바구니 상품을 찾을 수 없습니다.");
+            }
 
-            OrderItem orderItem = new OrderItem();
-            orderItem.setProduct(product);
-            orderItem.setCount(cartItem.getCount());
-            orderItem.setPrice(product.getSupplyPrice());
+            for (int i = 0; i < cartItems.size(); i++) {
+                CartItem cartItem = cartItems.get(i);
+                Product product = cartItem.getProduct();
 
-            order.addOrderItem(orderItem);
-            totalAmount += (product.getSupplyPrice() * cartItem.getCount());
+                OrderItem orderItem = createOrderItem(order, product, cartItem.getCount());
+                order.addOrderItem(orderItem);
 
-            if (i == 0) firstProductName = product.getName();
+                totalAmount += (product.getSupplyPrice() * cartItem.getCount());
+                if (i == 0) firstProductName = product.getName();
+            }
+            itemsCount = cartItems.size();
         }
+        // [Case B] 상품 목록에서 바로 주문인 경우 (신규 로직)
+        else if (request.getOrderItems() != null && !request.getOrderItems().isEmpty()) {
+            List<OrderDto.OrderItemRequest> directItems = request.getOrderItems();
+
+            for (int i = 0; i < directItems.size(); i++) {
+                OrderDto.OrderItemRequest itemReq = directItems.get(i);
+
+                Product product = productRepository.findById(itemReq.getProductId())
+                        .orElseThrow(() -> new IllegalArgumentException("상품 정보를 찾을 수 없습니다. ID: " + itemReq.getProductId()));
+
+                OrderItem orderItem = createOrderItem(order, product, itemReq.getCount());
+                order.addOrderItem(orderItem);
+
+                totalAmount += (product.getSupplyPrice() * itemReq.getCount());
+                if (i == 0) firstProductName = product.getName();
+            }
+            itemsCount = directItems.size();
+        }
+        else {
+            throw new IllegalArgumentException("주문할 상품이 없습니다.");
+        }
+
         order.setTotalAmount(totalAmount);
         orderRepository.save(order);
 
         String orderName = firstProductName;
-        if (cartItems.size() > 1) orderName += " 외 " + (cartItems.size() - 1) + "건";
+        if (itemsCount > 1) orderName += " 외 " + (itemsCount - 1) + "건";
 
         return OrderDto.OrderResponse.builder()
                 .orderNumber(order.getOrderNumber())
@@ -90,6 +116,15 @@ public class OrderService {
                 .buyerEmail(client.getEmail())
                 .buyerTel(client.getPhone())
                 .build();
+    }
+
+    // [헬퍼] OrderItem 생성 메서드 추출
+    private OrderItem createOrderItem(Order order, Product product, int count) {
+        OrderItem orderItem = new OrderItem();
+        orderItem.setProduct(product);
+        orderItem.setCount(count);
+        orderItem.setPrice(product.getSupplyPrice()); // 주문 시점 가격 고정
+        return orderItem;
     }
 
     // 3. 토스페이먼츠 결제 승인
@@ -262,6 +297,37 @@ public class OrderService {
         for (Order order : orders) {
             // 이미 배송중이거나 완료된 건은 취소 불가 체크 로직이 필요하다면 추가
             order.setStatus(OrderStatus.CANCELLED);
+        }
+    }
+
+    // --- 파트너 취소 신청 로직 ---
+    public void requestCancel(Client client, OrderDto.CancelRequest request) {
+        if (request.getOrderIds() == null || request.getOrderIds().isEmpty()) {
+            throw new IllegalArgumentException("취소할 주문이 선택되지 않았습니다.");
+        }
+
+        List<Order> orders = orderRepository.findAllById(request.getOrderIds());
+
+        for (Order order : orders) {
+            // 1. 본인 주문인지 확인
+            if (!order.getClient().getClientId().equals(client.getClientId())) {
+                throw new IllegalArgumentException("본인의 주문만 취소 신청할 수 있습니다.");
+            }
+
+            // 2. 취소 가능한 상태인지 확인 ('상품준비중'일 때만 신청 가능하도록 설정)
+            if (order.getStatus() == OrderStatus.PREPARING) {
+                order.setStatus(OrderStatus.CANCEL_REQUESTED); // 상태 변경
+                order.setCancelReason(request.getCancelReason()); // 사유 저장
+                order.setCancelDetail(request.getCancelDetail()); // 상세 사유 저장
+                order.setUpdatedAt(LocalDateTime.now());
+            } else if (order.getStatus() == OrderStatus.PENDING) {
+                // 결제 대기 중이면 바로 취소 처리
+                order.setStatus(OrderStatus.CANCELLED);
+                order.setCanceledAt(LocalDateTime.now());
+            } else {
+                // 이미 배송됨 등의 사유로 신청 불가 시 예외 발생 또는 무시
+                throw new IllegalStateException("주문번호 " + order.getOrderNumber() + "은(는) 취소 신청 가능한 상태가 아닙니다.");
+            }
         }
     }
 }

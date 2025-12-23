@@ -1,9 +1,7 @@
 package com.age.b2b.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+
 import java.util.List;
 
 public class OrderDto {
@@ -26,6 +24,14 @@ public class OrderDto {
         private String receiverPhone;
         private String address;
         private String memo;
+
+        private List<OrderItemRequest> orderItems;
+    }
+
+    @Getter @Setter
+    public static class OrderItemRequest {
+        private Long productId;
+        private int count;
     }
 
     // 3. 주문 생성 응답 (결제창용)
@@ -69,7 +75,7 @@ public class OrderDto {
         private String status;
     }
 
-    // 5. 주문 상세 품목 DTO (모달용)
+    // 5. 주문 상세 품목 DTO
     @Getter @Builder @AllArgsConstructor
     public static class OrderItemDetail {
         private String productCode;
@@ -77,5 +83,14 @@ public class OrderDto {
         private int price;
         private int count;
         private int totalPrice;
+    }
+
+    // 취소 신청 요청 DTO
+    @Getter @Setter
+    @NoArgsConstructor
+    public static class CancelRequest {
+        private List<Long> orderIds; // 취소할 주문 ID 목록 (여러 개일 수 있음)
+        private String cancelReason; // 사유 (예: CHANGE_MIND)
+        private String cancelDetail; // 상세 사유
     }
 }
