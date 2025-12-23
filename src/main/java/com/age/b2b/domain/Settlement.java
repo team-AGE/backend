@@ -16,6 +16,10 @@ public class Settlement {
     @Column(name = "settlement_id")
     private Long id;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name= "order_id")
+    private Order order;
+
     @Column(nullable = false)
     private String settlementNumber; // 정산번호
 
