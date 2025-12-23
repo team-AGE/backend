@@ -23,26 +23,19 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
 
     /* ================= 🔥 정산관리 화면 조회용 ================= */
     @Query(
-            value = """
-            SELECT new com.age.b2b.dto.SettlementListDto(
-                o.orderNumber,
-                o.createdAt,
-                s.totalAmount, 
-                '신용카드',
-                '정산완료',
-                s.createdAt
-            )
-            FROM Order o
-            JOIN Settlement s ON s.client = o.client
-            WHERE (:keyword IS NULL OR :keyword = '' OR o.orderNumber LIKE %:keyword%)
-            ORDER BY s.createdAt DESC
-        """,
-            countQuery = """
-            SELECT COUNT(o)
-            FROM Order o
-            JOIN Settlement s ON s.client = o.client
-            WHERE (:keyword IS NULL OR :keyword = '' OR o.orderNumber LIKE %:keyword%)
-        """
+            value = "SELECT new com.age.b2b.dto.SettlementListDto(" +
+                    "o.orderNumber, " +  // String
+                    "o.createdAt, " +    // LocalDateTime
+                    "s.totalAmount, " +  // Long
+                    "'신용카드', " +      // String
+                    "s.status, " +       // String
+                    "s.createdAt) " +    // LocalDateTime
+                    "FROM Settlement s " +
+                    "JOIN s.order o " +  // Settlement 엔티티의 order 필드와 조인
+                    "WHERE s.client.clientId = :clientId " +
+                    "AND (:keyword IS NULL OR :keyword = '' OR o.orderNumber LIKE %:keyword% OR s.settlementNumber LIKE %:keyword%) " +
+                    "ORDER BY s.createdAt ASC",
+            countQuery = "SELECT COUNT(s) FROM Settlement s JOIN s.order o WHERE s.client.clientId = :clientId"
     )
-    Page<SettlementListDto> findSettlementList(@Param("keyword") String keyword, Pageable pageable);
-}
+    Page<SettlementListDto> findSettlementList(@Param("clientId") Long clientId, @Param("keyword") String keyword, Pageable pageable);
+    }
