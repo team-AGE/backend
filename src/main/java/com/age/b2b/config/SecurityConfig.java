@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/client/signup", "/api/client/check", "/api/mail/**").permitAll()
 
                         .requestMatchers("/api/inventory/**").permitAll()
+                        .requestMatchers("/api/admin/image/**").permitAll()
 
                         // 2. [본사 - 마스터 전용]
                         .requestMatchers("/api/admin/master/**").hasRole("MASTER")

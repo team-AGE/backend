@@ -30,6 +30,7 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private OrderStatus status; // 발주상태 (출고전, 배송완료 등)
 
+    @Column(name= "total_amount", nullable = false)
     private int totalAmount; // 총 금액
 
     @Embedded

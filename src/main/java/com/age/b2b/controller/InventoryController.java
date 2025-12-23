@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/stock") // 1. 전체 경로
+@RequestMapping("/api/admin/stock") // 1. 전체 경로
 @CrossOrigin(origins = "http://localhost:3000") // 2. 리액트 요청 허용
 @RequiredArgsConstructor
 public class InventoryController {
