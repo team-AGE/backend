@@ -73,7 +73,7 @@ public class Order {
     }
 
     // 반품 관련 필드
-    @Column(name = "return_reason")
-    private String returnReason; // 고객이 입력한 반품 사유
+    private String returnReason;  // 반품 사유
+    private String returnDetail;  // 반품 상세 사유
 
 }

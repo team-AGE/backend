@@ -330,4 +330,37 @@ public class OrderService {
             }
         }
     }
+
+    // --- 파트너 반품 신청 로직 ---
+    public void requestReturn(Client client, OrderDto.ReturnRequest request) {
+        if (request.getOrderIds() == null || request.getOrderIds().isEmpty()) {
+            throw new IllegalArgumentException("반품할 주문이 선택되지 않았습니다.");
+        }
+
+        List<Order> orders = orderRepository.findAllById(request.getOrderIds());
+
+        for (Order order : orders) {
+            // 1. 본인 주문 확인
+            if (!order.getClient().getClientId().equals(client.getClientId())) {
+                throw new IllegalArgumentException("본인의 주문만 반품 신청할 수 있습니다.");
+            }
+
+            // 2. 상태 확인
+            OrderStatus status = order.getStatus();
+
+            // 반품 가능한 상태 목록
+            if (status == OrderStatus.SHIPPED || status == OrderStatus.DELIVERED) {
+
+                order.setStatus(OrderStatus.RETURN_REQUESTED);
+                order.setReturnReason(request.getReturnReason());
+                order.setReturnDetail(request.getReturnDetail());
+                order.setUpdatedAt(LocalDateTime.now());
+
+            } else if (status == OrderStatus.PENDING || status == OrderStatus.PREPARING) {
+                throw new IllegalStateException("주문번호 " + order.getOrderNumber() + "은(는) 배송 전 상태이므로 '취소' 신청을 이용해주세요.");
+            } else {
+                throw new IllegalStateException("주문번호 " + order.getOrderNumber() + "은(는) 이미 처리 중이거나 반품 신청이 불가능한 상태입니다 (" + convertStatusToKorean(status) + ").");
+            }
+        }
+    }
 }

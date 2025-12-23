@@ -134,4 +134,14 @@ public class PartnerController {
         orderService.requestCancel(principal.getClient(), request);
         return ResponseEntity.ok("취소 신청이 완료되었습니다.");
     }
+
+    // 7. 반품 신청
+    @PostMapping("/order/return")
+    public ResponseEntity<String> requestReturnOrder(
+            @AuthenticationPrincipal PrincipalDetails principal,
+            @RequestBody OrderDto.ReturnRequest request
+    ) {
+        orderService.requestReturn(principal.getClient(), request);
+        return ResponseEntity.ok("반품 신청이 완료되었습니다.");
+    }
 }

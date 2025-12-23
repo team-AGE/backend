@@ -93,4 +93,13 @@ public class OrderDto {
         private String cancelReason; // 사유 (예: CHANGE_MIND)
         private String cancelDetail; // 상세 사유
     }
+
+    // 반품 신청 요청 DTO
+    @Getter @Setter
+    @NoArgsConstructor
+    public static class ReturnRequest {
+        private List<Long> orderIds;   // 반품할 주문 ID 목록
+        private String returnReason;   // 반품 사유 (CHANGE_MIND, DEFECTIVE 등)
+        private String returnDetail;   // 상세 사유
+    }
 }
