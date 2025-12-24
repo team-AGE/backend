@@ -52,13 +52,29 @@ public class InventoryController {
         return ResponseEntity.ok(list);
     }
 
+    // 상세 조회
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<ProductLot> getStockDetail(@PathVariable Long id) {
+        return ResponseEntity.ok(inventoryService.getStockDetail(id));
+    }
+
+    // Lot 번호 검색
+    @GetMapping("/search/lot")
+    public ResponseEntity<ProductLot> getStockByLot(@RequestParam String lotNumber) {
+        ProductLot lot = inventoryService.getStockByLotNumber(lotNumber);
+        if (lot == null) {
+            return ResponseEntity.noContent().build(); // 204 No Content (없음)
+        }
+        return ResponseEntity.ok(lot);
+    }
+
     /**
      * 재고 조정 (PATCH or POST)
      */
     @PatchMapping("/adjust")
-    public ResponseEntity<Void> adjustStock(@RequestBody StockAdjustmentDto dto) {
+    public ResponseEntity<String> adjustStock(@RequestBody StockAdjustmentDto dto) {
         inventoryService.adjustStock(dto);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok("재고 정보가 수정되었습니다.");
     }
 
     /**
