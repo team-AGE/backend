@@ -22,7 +22,10 @@ public class OrderDto {
         private List<Long> cartItemIds;
         private String receiverName;
         private String receiverPhone;
-        private String address;
+
+        private String zipCode;       // 우편번호
+        private String address;       // 주소
+        private String detailAddress; // 상세주소
         private String memo;
 
         private List<OrderItemRequest> orderItems;
