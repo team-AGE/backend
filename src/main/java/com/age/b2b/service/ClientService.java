@@ -25,7 +25,8 @@ import java.util.UUID;
 public class ClientService {
 
     private final ClientRepository clientRepository;
-    private final PasswordEncoder passwordEncoder; // ★ BCryptPasswordEncoder -> PasswordEncoder로 변경
+    private final PasswordEncoder passwordEncoder;
+    private final MailService mailService;
 
     // 파일 저장 경로 (C드라이브 b2b_uploads 폴더)
     private final String UPLOAD_DIR = "C:\\b2b_uploads\\";
@@ -111,5 +112,30 @@ public class ClientService {
     public Resource getBusinessLicenseImage(String filename) throws MalformedURLException {
         String fullPath = UPLOAD_DIR + filename;
         return new UrlResource("file:" + fullPath);
+    }
+
+    // 1. 아이디 찾기
+    public void findId(String email) {
+        Client client = clientRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("해당 이메일로 가입된 계정이 없습니다."));
+
+        // 메일 발송
+        mailService.sendIdMail(client.getEmail(), client.getUsername());
+    }
+
+    // 2. 비밀번호 찾기 (임시 비밀번호 발급)
+    @Transactional
+    public void findPassword(String username, String email) {
+        Client client = clientRepository.findByUsernameAndEmail(username, email)
+                .orElseThrow(() -> new IllegalArgumentException("일치하는 회원 정보가 없습니다."));
+
+        // 임시 비밀번호 생성 (8자리)
+        String tempPw = UUID.randomUUID().toString().substring(0, 8);
+
+        // DB 업데이트
+        client.setPassword(passwordEncoder.encode(tempPw));
+
+        // 메일 발송 (평문 전송)
+        mailService.sendTempPwMail(client.getEmail(), tempPw);
     }
 }

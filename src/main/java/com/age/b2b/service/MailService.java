@@ -64,13 +64,63 @@ public class MailService {
         }
     }
 
-    // ★ [추가] 인증 코드 검증 메서드
+    // 인증 코드 검증 메서드
     public boolean verifyCode(String email, String code) {
         String storedCode = verificationCodes.get(email);
         if (storedCode != null && storedCode.equals(code)) {
-            verificationCodes.remove(email); // 인증 성공 시 코드 삭제 (재사용 방지)
+            verificationCodes.remove(email); // 인증 성공 시 코드 삭제
             return true;
         }
         return false;
+    }
+
+    // 아이디 찾기 메일 발송
+    @Async
+    public void sendIdMail(String email, String username) {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
+
+            String html = "<div>"
+                    + "<h2>[올곧은] 아이디 찾기 안내</h2>"
+                    + "<p>회원님의 아이디는 <strong>" + username + "</strong> 입니다.</p>"
+                    + "<p>로그인 후 서비스를 이용해주세요.</p>"
+                    + "</div>";
+
+            helper.setFrom(sender, "올곧은");
+            helper.setTo(email);
+            helper.setSubject("[올곧은] 아이디 찾기 안내");
+            helper.setText(html, true);
+
+            javaMailSender.send(message);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("메일 발송 실패");
+        }
+    }
+
+    // 임시 비밀번호 메일 발송
+    @Async
+    public void sendTempPwMail(String email, String tempPw) {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
+
+            String html = "<div>"
+                    + "<h2>[올곧은] 임시 비밀번호 안내</h2>"
+                    + "<p>회원님의 임시 비밀번호는 <strong>" + tempPw + "</strong> 입니다.</p>"
+                    + "<p>로그인 후 반드시 비밀번호를 변경해주세요.</p>"
+                    + "</div>";
+
+            helper.setFrom(sender, "올곧은");
+            helper.setTo(email);
+            helper.setSubject("[올곧은] 임시 비밀번호 안내");
+            helper.setText(html, true);
+
+            javaMailSender.send(message);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("메일 발송 실패");
+        }
     }
 }
