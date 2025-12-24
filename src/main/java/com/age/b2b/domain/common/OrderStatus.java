@@ -9,5 +9,7 @@ public enum OrderStatus {
     CANCEL_REQUESTED, // 취소요청
     CANCELLED,        // 취소완료
     RETURN_REQUESTED, // 반품요청
-    RETURNED          // 반품완료
+    RETURNED,         // 반품완료
+    RETURN_REJECTED,
+    CANCEL_REJECTED
 }

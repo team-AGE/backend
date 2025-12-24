@@ -24,4 +24,10 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     Page<Client> findAllByApprovalStatus(ClientStatus status, Pageable pageable);
 
     Page<Client> findAllByApprovalStatusAndBusinessNameContaining(ClientStatus status, String keyword, Pageable pageable);
+
+    // 이메일로 고객사 찾기 (아이디 찾기)
+    Optional<Client> findByEmail(String email);
+
+    // 아이디와 이메일로 고객사 찾기 (비밀번호 찾기)
+    Optional<Client> findByUsernameAndEmail(String username, String email);
 }

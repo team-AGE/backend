@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/client")
@@ -33,5 +34,22 @@ public class ClientController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("가입 실패: " + e.getMessage());
         }
+    }
+
+    // 아이디 찾기
+    @PostMapping("/find-id")
+    public ResponseEntity<String> findId(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        clientService.findId(email);
+        return ResponseEntity.ok("이메일로 아이디가 전송되었습니다.");
+    }
+
+    // 비밀번호 찾기
+    @PostMapping("/find-pw")
+    public ResponseEntity<String> findPw(@RequestBody Map<String, String> body) {
+        String username = body.get("username");
+        String email = body.get("email");
+        clientService.findPassword(username, email);
+        return ResponseEntity.ok("이메일로 임시 비밀번호가 전송되었습니다.");
     }
 }

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @Transactional
@@ -54,6 +55,25 @@ public class InventoryService {
         saveInventoryLog(savedLot, dto.getQuantity(), AdjustmentReason.INBOUND, "최초 입고");
 
         return savedLot.getId();
+    }
+
+    /**
+     * [본사] 전체 재고 현황 조회
+     */
+    // 화면에 재고 목록을 Table 형태로 보여줘야 하므로, 하나가 아닌 여러 개의 데이터 객체가 담긴 List 사용
+    @Transactional(readOnly = true)
+    public List<ProductLot> getAllInventory() {
+        List<ProductLot> list = productLotRepository.findAll();
+        System.out.println(">>> DB에서 가져온 데이터 개수: " + list.size()); // 이거 추가
+        return list;
+    }
+
+    /**
+     * [본사] 특정 상품 재고 현황 조회
+     */
+    @Transactional(readOnly = true)
+    public List<ProductLot> getInventoryByProduct(Long productId) {
+        return productLotRepository.findByProductId(productId);
     }
 
     /**

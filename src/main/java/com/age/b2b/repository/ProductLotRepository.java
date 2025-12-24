@@ -20,6 +20,9 @@ public interface ProductLotRepository extends JpaRepository<ProductLot, Long> {
     // Lot 번호로 조회 (중복 방지 등)
     Optional<ProductLot> findByLotNumber(String lotNumber);
 
+    // product id로 조회
+    List<ProductLot> findByProductId(Long productId);
+
     // 전체 입고 목록 조회 (최신 입고일 순)
     // Fetch Join을 사용하여 N+1 문제 방지 (Product 정보 같이 가져옴)
     @Query("SELECT pl FROM ProductLot pl JOIN FETCH pl.product")

@@ -54,8 +54,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 1. [공통] 누구나 접근 가능 (기존 설정)
                         .requestMatchers("/api/auth/**", "/error", "/images/**").permitAll()
-                        .requestMatchers("/api/client/signup", "/api/client/check", "/api/mail/**").permitAll()
+                        .requestMatchers("/api/client/signup", "/api/client/check", "/api/client/find-id", "/api/client/find-pw", "/api/mail/**").permitAll()
 
+
+                        .requestMatchers("/api/inventory/**").permitAll()
                         .requestMatchers("/api/admin/image/**").permitAll()
 
                         // 2. [본사 - 마스터 전용]

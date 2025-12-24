@@ -3,7 +3,11 @@ package com.age.b2b.repository;
 import com.age.b2b.domain.Client;
 import com.age.b2b.domain.Order;
 import com.age.b2b.domain.common.OrderStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -29,5 +33,49 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             OrderStatus status,
             LocalDateTime start,
             LocalDateTime end
+    );
+
+    @Query("SELECT o FROM Order o " +
+            "WHERE o.client.clientId = :clientId " +
+            "AND o.status <> 'PENDING' " +
+            "AND (:startDate IS NULL OR o.createdAt >= :startDate) " +
+            "AND (:endDate IS NULL OR o.createdAt <= :endDate) " +
+            "AND (:keyword IS NULL OR o.orderNumber LIKE %:keyword%)")
+    Page<Order> searchClientOrders(
+            @Param("clientId") Long clientId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    @Query("SELECT o FROM Order o " +
+            "JOIN o.client c " +
+            "WHERE o.status <> 'PENDING' " +
+            "AND (:startDate IS NULL OR o.createdAt >= :startDate) " +
+            "AND (:endDate IS NULL OR o.createdAt <= :endDate) " +
+            "AND (:keyword IS NULL OR c.businessName LIKE %:keyword% OR o.orderNumber LIKE %:keyword%)")
+    Page<Order> searchAdminOrders(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    Page<Order> findByStatus(OrderStatus orderStatus, Pageable pageable);
+
+    // 반품 목록 검색 쿼리
+    @Query("SELECT DISTINCT o FROM Order o " +
+            "JOIN o.orderItems oi " +
+            "JOIN oi.product p " +
+            "WHERE o.status = :status " +
+            "AND (:keyword IS NULL OR :keyword = '' " +
+            "    OR o.orderNumber LIKE %:keyword% " +
+            "    OR p.name LIKE %:keyword% " +
+            "    OR p.productCode LIKE %:keyword%)")
+    Page<Order> findByStatusAndKeyword(
+            @Param("status") OrderStatus status,
+            @Param("keyword") String keyword,
+            Pageable pageable
     );
 }
