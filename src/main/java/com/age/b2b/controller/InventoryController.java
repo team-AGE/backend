@@ -5,6 +5,10 @@ import com.age.b2b.dto.InboundRequestDto;
 import com.age.b2b.dto.StockAdjustmentDto;
 import com.age.b2b.service.InventoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +19,7 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:3000") // 2. 리액트 요청 허용
 @RequiredArgsConstructor
 public class InventoryController {
+
     private final InventoryService inventoryService;
 
     /**
@@ -27,12 +32,15 @@ public class InventoryController {
     }
 
     /**
-     * 전체 재고 조회 (GET)
+     * 전체 재고 조회 (페이징 + 검색)
      */
     @GetMapping("/list")
-    public ResponseEntity<List<ProductLot>> getAllInventory() {
-        List<ProductLot> list = inventoryService.getAllInventory();
-        return ResponseEntity.ok(list);
+    public ResponseEntity<Page<ProductLot>> getAllInventory(
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        // InventoryService.getStockList 메서드를 호출합니다.
+        return ResponseEntity.ok(inventoryService.getStockList(pageable, keyword));
     }
 
     /**
@@ -53,4 +61,12 @@ public class InventoryController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * 재고 삭제 (DELETE)
+     */
+    @DeleteMapping("/delete")
+    public ResponseEntity<String> deleteStock(@RequestBody List<Long> ids) {
+        inventoryService.deleteStocks(ids);
+        return ResponseEntity.ok("선택한 재고가 정상적으로 삭제되었습니다.");
+    }
 }

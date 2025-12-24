@@ -11,6 +11,8 @@ import com.age.b2b.repository.InventoryLogRepository;
 import com.age.b2b.repository.ProductLotRepository;
 import com.age.b2b.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -107,5 +109,22 @@ public class InventoryService {
         log.setNote(note);
 
         inventoryLogRepository.save(log);
+    }
+
+    // 재고 목록 조회 (검색 + 페이징)
+    @Transactional(readOnly = true)
+    public Page<ProductLot> getStockList(Pageable pageable, String keyword) {
+        return productLotRepository.searchStock(keyword, pageable);
+    }
+
+    // 재고 삭제
+    public void deleteStocks(List<Long> lotIds) {
+        for (Long lotId : lotIds) {
+            // 1. 해당 재고의 이력(로그) 모두 삭제
+            inventoryLogRepository.deleteByProductLotId(lotId);
+
+            // 2. 재고(Lot) 삭제
+            productLotRepository.deleteById(lotId);
+        }
     }
 }

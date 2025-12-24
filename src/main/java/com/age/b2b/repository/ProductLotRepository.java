@@ -32,4 +32,16 @@ public interface ProductLotRepository extends JpaRepository<ProductLot, Long> {
     @Query("SELECT pl FROM ProductLot pl JOIN FETCH pl.product p " +
             "WHERE p.name LIKE %:keyword% OR pl.lotNumber LIKE %:keyword%")
     Page<ProductLot> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+
+    // 재고 현황 검색 (상품명, 코드, Lot번호)
+    @Query("SELECT pl FROM ProductLot pl " +
+            "JOIN FETCH pl.product p " +
+            "WHERE (:keyword IS NULL OR :keyword = '' " +
+            "    OR p.name LIKE %:keyword% " +
+            "    OR p.productCode LIKE %:keyword% " +
+            "    OR pl.lotNumber LIKE %:keyword%)")
+    Page<ProductLot> searchStock(
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
 }
