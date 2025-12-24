@@ -61,4 +61,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
+    Page<Order> findByStatus(OrderStatus orderStatus, Pageable pageable);
+
+    // 반품 목록 검색 쿼리
+    @Query("SELECT DISTINCT o FROM Order o " +
+            "JOIN o.orderItems oi " +
+            "JOIN oi.product p " +
+            "WHERE o.status = :status " +
+            "AND (:keyword IS NULL OR :keyword = '' " +
+            "    OR o.orderNumber LIKE %:keyword% " +
+            "    OR p.name LIKE %:keyword% " +
+            "    OR p.productCode LIKE %:keyword%)")
+    Page<Order> findByStatusAndKeyword(
+            @Param("status") OrderStatus status,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
 }

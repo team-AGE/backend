@@ -102,4 +102,36 @@ public class OrderDto {
         private String returnReason;   // 반품 사유 (CHANGE_MIND, DEFECTIVE 등)
         private String returnDetail;   // 상세 사유
     }
+
+    // 본사 반품 관리 목록 조회용 DTO
+    @Getter @Builder @AllArgsConstructor
+    public static class AdminReturnListResponse {
+        private Long orderId;           // PK
+        private String orderNumber;     // 발주번호
+        private String orderDate;       // 발주일자
+        private String productCode;     // 상품코드
+        private String productName;     // 상품명
+        private int supplyPrice;        // 공급가
+        private int quantity;           // 수량
+        private int totalAmount;        // 총 금액
+        private String returnReason;    // 반품 사유
+        private String status;          // 상태
+        private String statusDate;      // 상태처리일자 (최근 수정일)
+    }
+
+    // 본사 취소 관리 목록 조회용 DTO
+    @Getter @Builder @AllArgsConstructor
+    public static class AdminCancelListResponse {
+        private Long orderId;
+        private String orderNumber;
+        private String orderDate;
+        private String productCode;
+        private String productName;
+        private int supplyPrice;
+        private int quantity;
+        private int totalAmount;
+        private String cancelReason;
+        private String status;
+        private String statusDate;
+    }
 }

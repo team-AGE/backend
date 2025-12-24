@@ -257,6 +257,8 @@ public class OrderService {
             case CANCELLED -> "취소완료";
             case RETURN_REQUESTED -> "반품요청";
             case RETURNED -> "반품완료";
+            case RETURN_REJECTED -> "반품거절";
+            case CANCEL_REJECTED -> "취소거절";
 
             default -> status.name();
         };
@@ -362,5 +364,140 @@ public class OrderService {
                 throw new IllegalStateException("주문번호 " + order.getOrderNumber() + "은(는) 이미 처리 중이거나 반품 신청이 불가능한 상태입니다 (" + convertStatusToKorean(status) + ").");
             }
         }
+    }
+
+    // --- 본사 반품 관리 목록 조회 ---
+    @Transactional(readOnly = true)
+    public Page<OrderDto.AdminReturnListResponse> getAdminReturnList(
+            Pageable pageable, String keyword) {
+        Page<Order> orders = orderRepository.findByStatusAndKeyword(
+                OrderStatus.RETURN_REQUESTED,
+                keyword,
+                pageable
+        );
+
+        return orders.map(order -> {
+            // 대표 상품명 생성 로직
+            OrderItem firstItem = order.getOrderItems().isEmpty() ? null : order.getOrderItems().get(0);
+            String productName = "상품 없음";
+            String productCode = "-";
+            int itemPrice = 0;
+
+            if (firstItem != null) {
+                productCode = firstItem.getProduct().getProductCode();
+                productName = firstItem.getProduct().getName();
+                itemPrice = firstItem.getPrice();
+
+                if (order.getOrderItems().size() > 1) {
+                    productName += " 외 " + (order.getOrderItems().size() - 1) + "건";
+                }
+            }
+
+            // 총 수량 계산
+            int totalQty = order.getOrderItems().stream().mapToInt(OrderItem::getCount).sum();
+
+            return OrderDto.AdminReturnListResponse.builder()
+                    .orderId(order.getId())
+                    .orderNumber(order.getOrderNumber())
+                    .orderDate(order.getCreatedAt().toLocalDate().toString())
+                    .productCode(productCode)
+                    .productName(productName)
+                    .supplyPrice(itemPrice)
+                    .quantity(totalQty)
+                    .totalAmount(order.getTotalAmount())
+                    .returnReason(order.getReturnReason())
+                    .status(convertStatusToKorean(order.getStatus()))
+                    .statusDate(order.getUpdatedAt().toLocalDate().toString())
+                    .build();
+        });
+    }
+
+    // --- 본사 반품 승인 ---
+    public void approveReturns(List<Long> orderIds) {
+        List<Order> orders = orderRepository.findAllById(orderIds);
+
+        for (Order order : orders) {
+            // '반품요청' 상태인 것만 '반품완료'로 변경
+            if (order.getStatus() == OrderStatus.RETURN_REQUESTED) {
+                order.setStatus(OrderStatus.RETURNED);
+                order.setReturnedAt(LocalDateTime.now());
+                order.setUpdatedAt(LocalDateTime.now());
+            }
+        }
+    }
+
+    // --- 반품 거절 로직 ---
+    public void rejectReturn(Long orderId, String reason) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문 정보를 찾을 수 없습니다."));
+
+        if (order.getStatus() != OrderStatus.RETURN_REQUESTED) {
+            throw new IllegalStateException("반품 요청 상태인 주문만 거절할 수 있습니다.");
+        }
+
+        // 상태 변경: 반품 거절
+        order.setStatus(OrderStatus.RETURN_REJECTED);
+
+        // 거절 사유 저장
+        // 여기서는 returnDetail에 " [거절: 사유]"
+        String originalDetail = order.getReturnDetail() != null ? order.getReturnDetail() : "";
+        order.setReturnDetail(originalDetail + " [반품거절사유: " + reason + "]");
+
+        order.setUpdatedAt(LocalDateTime.now());
+    }
+
+    // --- 본사 취소 관리 목록 조회 ---
+    @Transactional(readOnly = true)
+    public Page<OrderDto.AdminCancelListResponse> getAdminCancelList(
+            Pageable pageable, String keyword) {
+
+        // '취소 요청' 상태 조회 (검색어 포함)
+        Page<Order> orders = orderRepository.findByStatusAndKeyword(
+                OrderStatus.CANCEL_REQUESTED,
+                keyword,
+                pageable
+        );
+
+        return orders.map(order -> {
+            OrderItem item = order.getOrderItems().get(0);
+
+            String displayName = item.getProduct().getName();
+            if (order.getOrderItems().size() > 1) {
+                displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
+            }
+            int totalQty = order.getOrderItems().stream().mapToInt(OrderItem::getCount).sum();
+
+            return OrderDto.AdminCancelListResponse.builder()
+                    .orderId(order.getId())
+                    .orderNumber(order.getOrderNumber())
+                    .orderDate(order.getCreatedAt().toLocalDate().toString())
+                    .productCode(item.getProduct().getProductCode())
+                    .productName(displayName)
+                    .supplyPrice(item.getPrice())
+                    .quantity(totalQty)
+                    .totalAmount(order.getTotalAmount())
+                    .cancelReason(order.getCancelReason()) // 취소 사유
+                    .status(convertStatusToKorean(order.getStatus()))
+                    .statusDate(order.getUpdatedAt().toLocalDate().toString())
+                    .build();
+        });
+    }
+
+    // --- 본사 취소 거절 ---
+    public void rejectCancel(Long orderId, String reason) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문 정보를 찾을 수 없습니다."));
+
+        if (order.getStatus() != OrderStatus.CANCEL_REQUESTED) {
+            throw new IllegalStateException("취소 요청 상태인 주문만 거절할 수 있습니다.");
+        }
+
+        order.setStatus(OrderStatus.CANCEL_REJECTED); // 거절 상태로 변경
+
+        // 거절 사유 기록
+        String originalDetail = order.getCancelDetail() != null ? order.getCancelDetail() : "";
+        order.setCancelDetail(originalDetail + " [취소거절사유: " + reason + "]");
+
+        order.setUpdatedAt(LocalDateTime.now());
     }
 }
