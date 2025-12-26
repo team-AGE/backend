@@ -30,6 +30,7 @@ public class OrderService {
     private final CartItemRepository cartItemRepository;
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
+    private final InventoryService inventoryService;
 
     private final String TOSS_SECRET_KEY = "test_sk_XZYkKL4MrjBYmdBMpbB1r0zJwlEW";
 
@@ -408,6 +409,12 @@ public class OrderService {
         List<Order> orders = orderRepository.findAllById(orderIds);
         for (Order order : orders) {
             if (order.getStatus() == OrderStatus.RETURN_REQUESTED) {
+
+                // 재고 복구
+                order.getOrderItems().forEach(item -> {
+                    inventoryService.restoreStock(item.getProduct().getId(), item.getCount());
+                });
+
                 order.setStatus(OrderStatus.RETURNED);
                 order.setReturnedAt(LocalDateTime.now());
                 order.setUpdatedAt(LocalDateTime.now());
