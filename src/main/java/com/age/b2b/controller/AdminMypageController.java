@@ -5,6 +5,8 @@ import com.age.b2b.dto.AdminPasswordChangeReqDto;
 import com.age.b2b.dto.MypageResDto;
 import com.age.b2b.service.AdminMypageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -29,8 +31,13 @@ public class AdminMypageController {
     }
     // 비밀번호 수정
     @PutMapping("/mypage/password")
-    public void changePassword(@RequestBody AdminPasswordChangeReqDto dto) {
+    public ResponseEntity<?> changePassword(
+            @RequestBody AdminPasswordChangeReqDto dto
+    ) {
         adminMypageService.changePassword(dto);
+        return ResponseEntity.ok().build();
     }
+
+
 
 }
