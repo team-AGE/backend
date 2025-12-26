@@ -380,8 +380,16 @@ public class OrderService {
     @Transactional(readOnly = true)
     public Page<OrderDto.AdminReturnListResponse> getAdminReturnList(
             Pageable pageable, String keyword) {
-        Page<Order> orders = orderRepository.findByStatusAndKeyword(
+        // 조회할 상태 목록 정의 (요청, 완료, 거절 모두 포함)
+        List<OrderStatus> statuses = List.of(
                 OrderStatus.RETURN_REQUESTED,
+                OrderStatus.RETURNED,
+                OrderStatus.RETURN_REJECTED
+        );
+
+        // 변경된 리포지토리 메서드 호출
+        Page<Order> orders = orderRepository.findByStatusInAndKeyword(
+                statuses,
                 keyword,
                 pageable
         );
@@ -451,13 +459,19 @@ public class OrderService {
         order.setUpdatedAt(LocalDateTime.now());
     }
 
-    // [본사] 취소 관리 목록
+    // [본사] 취소 관리 목록 조회
     @Transactional(readOnly = true)
     public Page<OrderDto.AdminCancelListResponse> getAdminCancelList(
             Pageable pageable, String keyword) {
 
-        Page<Order> orders = orderRepository.findByStatusAndKeyword(
-                OrderStatus.CANCEL_REQUESTED,
+        List<OrderStatus> statuses = List.of(
+                OrderStatus.CANCEL_REQUESTED, // 취소 요청
+                OrderStatus.CANCELLED,        // 취소 완료
+                OrderStatus.CANCEL_REJECTED   // 취소 거절
+        );
+
+        Page<Order> orders = orderRepository.findByStatusInAndKeyword(
+                statuses,
                 keyword,
                 pageable
         );

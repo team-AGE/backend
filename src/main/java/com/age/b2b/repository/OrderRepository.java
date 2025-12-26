@@ -68,13 +68,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT DISTINCT o FROM Order o " +
             "JOIN o.orderItems oi " +
             "JOIN oi.product p " +
-            "WHERE o.status = :status " +
+            "WHERE o.status IN :statuses " +
             "AND (:keyword IS NULL OR :keyword = '' " +
             "    OR o.orderNumber LIKE %:keyword% " +
             "    OR p.name LIKE %:keyword% " +
             "    OR p.productCode LIKE %:keyword%)")
-    Page<Order> findByStatusAndKeyword(
-            @Param("status") OrderStatus status,
+    Page<Order> findByStatusInAndKeyword(
+            @Param("statuses") List<OrderStatus> statuses,
             @Param("keyword") String keyword,
             Pageable pageable
     );
