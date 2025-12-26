@@ -26,5 +26,9 @@ public class OrderItem {
     private int count; // 수량
     private int price; // 공급가 (주문 시점 가격 고정)
 
+    public int getTotalPrice() {
+        return this.price * this.count;
+    }
+
     // 반품/취소 처리를 위해 개별 항목 상태가 필요하다면 여기에 Enum 추가
 }
