@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -193,36 +194,33 @@ public class OrderService {
         return date + "-" + random;
     }
 
-    // [파트너] 주문 목록 조회
+    /**
+     * [파트너용] 주문 목록 조회
+     */
     @Transactional(readOnly = true)
     public Page<OrderDto.PartnerOrderListResponse> getPartnerOrderList(
             Client client, Pageable pageable, String startDateStr, String endDateStr, String keyword) {
 
-        LocalDateTime start = (startDateStr != null && !startDateStr.isEmpty())
-                ? LocalDateTime.parse(startDateStr + "T00:00:00") : null;
-        LocalDateTime end = (endDateStr != null && !endDateStr.isEmpty())
-                ? LocalDateTime.parse(endDateStr + "T23:59:59") : null;
+        LocalDateTime start = (startDateStr != null && !startDateStr.isEmpty()) ? LocalDateTime.parse(startDateStr + "T00:00:00") : null;
+        LocalDateTime end = (endDateStr != null && !endDateStr.isEmpty()) ? LocalDateTime.parse(endDateStr + "T23:59:59") : null;
 
-        Page<Order> orders = orderRepository.searchClientOrders(
-                client.getClientId(), start, end, keyword, pageable);
+        Page<Order> orders = orderRepository.searchClientOrders(client.getClientId(), start, end, keyword, pageable);
 
         return orders.map(order -> {
             OrderItem firstItem = order.getOrderItems().isEmpty() ? null : order.getOrderItems().get(0);
-            int totalQty = order.getOrderItems().stream().mapToInt(OrderItem::getCount).sum();
+            String displayName = (firstItem != null) ? firstItem.getProduct().getName() : "상품 정보 없음";
+            if (order.getOrderItems().size() > 1) {
+                displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
+            }
 
             return OrderDto.PartnerOrderListResponse.builder()
                     .orderId(order.getId())
                     .orderNumber(order.getOrderNumber())
                     .createdAt(order.getCreatedAt().toString().replace("T", " ").substring(0, 16))
-                    .repProductCode(firstItem != null ? firstItem.getProduct().getProductCode() : "-")
-                    .repProductName(firstItem != null ? firstItem.getProduct().getName() : "상품 없음")
+                    .repProductName(displayName) // orderName 필드가 없으므로 기존 필드 활용
                     .itemCount(order.getOrderItems().size())
-                    .repProductPrice(firstItem != null ? firstItem.getPrice() : 0)
-                    .totalQuantity(totalQty)
                     .totalAmount(order.getTotalAmount())
                     .status(convertStatusToKorean(order.getStatus()))
-                    .deliveryDate(order.getDeliveryCompletedAt() != null ?
-                            order.getDeliveryCompletedAt().toString().substring(0, 10) : "-")
                     .build();
         });
     }
@@ -262,7 +260,9 @@ public class OrderService {
         };
     }
 
-    // 본사 관리자용 주문 목록 조회
+    /**
+     * [본사 관리자용] 전체 발주 목록 조회 (AdminController 컴파일 에러 해결)
+     */
     @Transactional(readOnly = true)
     public Page<OrderDto.AdminOrderListResponse> getAdminOrderList(
             Pageable pageable, String startDateStr, String endDateStr, String keyword) {
@@ -276,6 +276,10 @@ public class OrderService {
 
         return orders.map(order -> {
             OrderItem firstItem = order.getOrderItems().isEmpty() ? null : order.getOrderItems().get(0);
+            String displayName = (firstItem != null) ? firstItem.getProduct().getName() : "상품 정보 없음";
+            if (order.getOrderItems().size() > 1) {
+                displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
+            }
 
             return OrderDto.AdminOrderListResponse.builder()
                     .orderId(order.getId())
@@ -283,7 +287,7 @@ public class OrderService {
                     .clientName(order.getClient().getBusinessName())
                     .createdAt(order.getCreatedAt().toString().replace("T", " ").substring(0, 16))
                     .repProductCode(firstItem != null ? firstItem.getProduct().getProductCode() : "-")
-                    .repProductName(firstItem != null ? firstItem.getProduct().getName() : "상품 없음")
+                    .repProductName(displayName) // orderName 대신 사용
                     .itemCount(order.getOrderItems().size())
                     .totalAmount(order.getTotalAmount())
                     .status(convertStatusToKorean(order.getStatus()))
@@ -499,5 +503,26 @@ public class OrderService {
         String originalDetail = order.getCancelDetail() != null ? order.getCancelDetail() : "";
         order.setCancelDetail(originalDetail + " [취소거절사유: " + reason + "]");
         order.setUpdatedAt(LocalDateTime.now());
+    }
+
+    /**
+     * [섹션 2] 파트너 대시보드 통계 조회
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getDashboardStats(Client client) {
+        return List.of(
+                createStatMap("결제대기", orderRepository.countByClientAndStatus(client, OrderStatus.PENDING), "#f5f5f5"),
+                createStatMap("배송대기", orderRepository.countByClientAndStatus(client, OrderStatus.PREPARING), "#237d31"),
+                createStatMap("배송중", orderRepository.countByClientAndStatus(client, OrderStatus.SHIPPED), "#237d31"),
+                createStatMap("배송완료", orderRepository.countByClientAndStatus(client, OrderStatus.DELIVERED), "#237d31")
+        );
+    }
+
+    private Map<String, Object> createStatMap(String label, long count, String color) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("label", label);
+        map.put("count", count);
+        map.put("color", color);
+        return map;
     }
 }
