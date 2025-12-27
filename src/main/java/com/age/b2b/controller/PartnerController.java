@@ -144,4 +144,19 @@ public class PartnerController {
         orderService.requestReturn(principal.getClient(), request);
         return ResponseEntity.ok("반품 신청이 완료되었습니다.");
     }
+    // 고객사 메인화면 신제품 조회
+    @GetMapping("/product/new")
+    public ResponseEntity<ProductResponseDto> getLatestProduct() {
+        return ResponseEntity.ok(productService.getLatestProduct());
+    }
+
+    // 고객사 메인화면 발주현황 요약
+    @GetMapping("/order/stats")
+    public ResponseEntity<List<Map<String, Object>>> getOrderStats(
+            @AuthenticationPrincipal PrincipalDetails principal
+    ) {
+        // orderService에서 상태별 카운트를 계산해오는 메서드 호출
+        // 예: [{label: "결제완료", count: 5, color: "#237d31"}, ...]
+        return ResponseEntity.ok(orderService.getDashboardStats(principal.getClient()));
+    }
 }
