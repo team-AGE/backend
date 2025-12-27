@@ -9,5 +9,6 @@ public enum AdjustmentReason {
     EXPIRED,        // 유통기한 경과
     COUNT_MISMATCH, // 실사 차이
     ETC,            // 기타
-    RETURN          // 반품/취소로 인한 재고 복구
+    RETURN,          // 반품/취소로 인한 재고 복구
+    ADJUSTMENT      // 입고 수정/재고 조정
 }

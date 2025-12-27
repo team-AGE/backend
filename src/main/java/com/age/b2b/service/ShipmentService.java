@@ -98,7 +98,7 @@ public class ShipmentService {
      */
     @Transactional(readOnly = true)
     public Page<ShipmentListResponseDto> getShipmentList(String keyword, int page) {
-        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "shippedDate"));
+        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "id"));
 
         Page<Shipment> shipments = shipmentRepository.searchShipments(keyword, pageable);
 
@@ -149,15 +149,18 @@ public class ShipmentService {
             origin = firstItem.getProduct().getOrigin();
             totalQty = order.getOrderItems().stream().mapToInt(OrderItem::getCount).sum();
 
-            // ★ [Lot 정보 조회 로직 추가]
-            // 선입선출(FIFO)이므로, 해당 상품의 '유통기한이 가장 빠른' Lot 정보를 대표로 표시
+            // 선입선출
             List<ProductLot> lots = productLotRepository.findByProductIdOrderByExpiryDateAsc(firstItem.getProduct().getId());
             if (!lots.isEmpty()) {
-                // 가장 먼저 나갔을 것으로 추정되는 첫 번째 Lot 정보 사용
                 ProductLot repLot = lots.get(0);
                 lotNumber = repLot.getLotNumber();
                 expiryDate = repLot.getExpiryDate().toString();
             }
+        }
+
+        String shipmentDateStr = "-";
+        if (shipment.getShippedDate() != null) {
+            shipmentDateStr = shipment.getShippedDate().toLocalDate().toString();
         }
 
         return ShipmentListResponseDto.builder()
@@ -165,6 +168,7 @@ public class ShipmentService {
                 .shipmentNumber(shipment.getShipmentNumber())
                 .orderNumber(order.getOrderNumber())
                 .orderDate(order.getCreatedAt().toLocalDate().toString())
+                .shipmentDate(shipmentDateStr)
                 .productCode(productCode)
                 .productName(productName)
                 .quantity(totalQty)

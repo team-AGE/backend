@@ -14,6 +14,7 @@ public class ShipmentListResponseDto {
     private String shipmentNumber;  // 출고 번호
     private String orderNumber;     // 발주 번호
     private String orderDate;       // 발주 일자
+    private String shipmentDate;    // 출고 일자
     private String productCode;     // 대표 상품 코드
     private String productName;     // 대표 상품명
     private int quantity;           // 총 수량
