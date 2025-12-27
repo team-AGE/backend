@@ -24,7 +24,8 @@ public class DashboardService {
         long today = safeLong(dashboardRepository.todaySettlementSales());
         long yesterday = safeLong(dashboardRepository.yesterdaySettlementSales());
         double rate = calcRate(today, yesterday);
-
+        System.out.println("🔥 todaySettlementSales = " + today);
+        System.out.println("🔥 yesterdaySettlementSales = " + yesterday);
         TodaySalesRes todayRes = new TodaySalesRes(today, yesterday, rate);
 
         // 2) 이번달 매출 (정산 테이블 기준)

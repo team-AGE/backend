@@ -12,21 +12,23 @@ public interface DashboardRepository extends JpaRepository<Order, Long> {
 
     // ===== 1) 오늘 매출 (o.created_at 사용) =====
     @Query(value = """
-    SELECT COALESCE(SUM(s.total_amount), 0)
-    FROM settlements s
-    WHERE s.created_at >= CURDATE()
-      AND s.created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-    """, nativeQuery = true)
+SELECT COALESCE(SUM(s.total_amount), 0)
+FROM settlements s
+WHERE s.created_at >= DATE(CONVERT_TZ(NOW(), '+00:00', '+09:00'))
+  AND s.created_at <  DATE_ADD(DATE(CONVERT_TZ(NOW(), '+00:00', '+09:00')), INTERVAL 1 DAY)
+""", nativeQuery = true)
     Long todaySettlementSales();
+
 
     // ===== 2) 전일 매출 (o.created_at 사용) =====
     @Query(value = """
-    SELECT COALESCE(SUM(s.total_amount), 0)
-    FROM settlements s
-    WHERE s.created_at >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)
-      AND s.created_at < CURDATE()
-    """, nativeQuery = true)
+SELECT COALESCE(SUM(s.total_amount), 0)
+FROM settlements s
+WHERE s.created_at >= DATE_SUB(DATE(CONVERT_TZ(NOW(), '+00:00', '+09:00')), INTERVAL 1 DAY)
+  AND s.created_at <  DATE(CONVERT_TZ(NOW(), '+00:00', '+09:00'))
+""", nativeQuery = true)
     Long yesterdaySettlementSales();
+
 
     // ===== 3) 이번달 매출(정산 기준) =====
     @Query(value = """

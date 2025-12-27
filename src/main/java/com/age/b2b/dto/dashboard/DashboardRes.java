@@ -8,7 +8,7 @@ import java.util.List;
 @Getter
 @AllArgsConstructor
 public class DashboardRes {
-    private TodaySalesRes today;
+    private TodaySalesRes todaySales;
     private long monthSales;
     private List<WeeklySalesRes> weeklySales;
     private OrderStatusCountRes orderStatus;

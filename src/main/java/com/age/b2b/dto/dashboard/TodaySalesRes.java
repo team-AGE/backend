@@ -6,7 +6,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class TodaySalesRes {
-    private long todaySales;
-    private long yesterdaySales;
+    private long today;
+    private long yesterday;
     private double rate; // 전일 대비 %
 }
