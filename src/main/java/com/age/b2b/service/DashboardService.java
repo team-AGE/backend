@@ -38,7 +38,7 @@ public class DashboardService {
         Map<String, Long> dailyMap = new LinkedHashMap<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd");
 
-        for (int i = 4; i >= 0; i--) {
+        for (int i = 6; i >= 0; i--) {
             String dateKey = LocalDate.now().minusDays(i).format(formatter);
             dailyMap.put(dateKey, 0L);
         }

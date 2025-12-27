@@ -45,7 +45,7 @@ WHERE s.created_at >= DATE_SUB(DATE(CONVERT_TZ(NOW(), '+00:00', '+09:00')), INTE
         DATE_FORMAT(s.created_at, '%m/%d') AS date_label,
         COALESCE(SUM(s.total_amount), 0) AS sales
     FROM settlements s
-    WHERE s.created_at >= DATE_SUB(CURDATE(), INTERVAL 4 DAY) -- 오늘 포함 최근 5일
+    WHERE s.created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) -- 오늘 포함 최근 5일
     GROUP BY DATE_FORMAT(s.created_at, '%m/%d'), DATE(s.created_at)
     ORDER BY DATE(s.created_at) ASC
     """, nativeQuery = true)
@@ -81,7 +81,6 @@ WHERE s.created_at >= DATE_SUB(DATE(CONVERT_TZ(NOW(), '+00:00', '+09:00')), INTE
     // ===== 7) 발주내역   =====
     // DashboardRepository.java
 
-    // DashboardRepository.java
 
     @Query(value = """
     SELECT c.business_name, COUNT(o.order_id) -- c.name 대신 c.business_name 사용
@@ -89,7 +88,7 @@ WHERE s.created_at >= DATE_SUB(DATE(CONVERT_TZ(NOW(), '+00:00', '+09:00')), INTE
     JOIN clients c ON o.client_id = c.client_id
     WHERE o.status = 'PREPARING'
     GROUP BY c.business_name
-    LIMIT 5
+    LIMIT 3
     """, nativeQuery = true)
     List<Object[]> findPreparingOrderSummary();
 }
