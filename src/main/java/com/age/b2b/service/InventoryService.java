@@ -170,15 +170,70 @@ public class InventoryService {
         }
     }
 
+    /**
+     * [출고] 선입선출(FIFO)로 재고 차감
+     */
+    public void deductStock(Long productId, int quantity) {
+        // 1. 유통기한 임박한 순서대로 Lot 조회
+        List<ProductLot> lots = productLotRepository.findByProductIdOrderByExpiryDateAsc(productId);
+
+        if (lots.isEmpty()) {
+            throw new IllegalStateException("재고가 존재하지 않는 상품입니다. (Product ID: " + productId + ")");
+        }
+
+        int remainingQty = quantity; // 차감해야 할 남은 수량
+
+        for (ProductLot lot : lots) {
+            if (remainingQty <= 0) break;
+
+            int currentQty = lot.getQuantity();
+            if (currentQty <= 0) continue; // 이미 소진된 Lot은 패스
+
+            int deductAmount = Math.min(currentQty, remainingQty); // 이번 Lot에서 뺄 수량
+
+            // 수량 차감
+            lot.setQuantity(currentQty - deductAmount);
+            remainingQty -= deductAmount;
+
+            // 이력 저장 (출고)
+            saveInventoryLog(lot, -deductAmount, AdjustmentReason.OUTBOUND, "주문 출고 차감");
+        }
+
+        // 모든 Lot를 돌았는데도 뺄 수량이 남았다면 -> 재고 부족 예외
+        if (remainingQty > 0) {
+            throw new IllegalStateException("재고가 부족합니다. (부족 수량: " + remainingQty + ")");
+        }
+    }
+
+    /**
+     * [반품/취소] 재고 복구
+     */
+    public void restoreStock(Long productId, int quantity) {
+        List<ProductLot> lots = productLotRepository.findByProductIdOrderByExpiryDateAsc(productId);
+
+        if (lots.isEmpty()) {
+            throw new IllegalStateException("복구할 재고 Lot이 존재하지 않습니다. 입고 처리를 먼저 해주세요.");
+        }
+
+        // 가장 유통기한이 늦은(최신) Lot 선택 -> 가장 뒤에 있는 요소
+        ProductLot targetLot = lots.get(lots.size() - 1);
+
+        // 수량 복구
+        targetLot.setQuantity(targetLot.getQuantity() + quantity);
+
+        // 이력 저장 (반품)
+        // AdjustmentReason.RETURN 이 Enum에 있다고 가정
+        saveInventoryLog(targetLot, quantity, AdjustmentReason.RETURN, "반품/취소로 인한 복구");
+    }
+
     // 이력 저장 공통화
     private void saveInventoryLog(ProductLot lot, int changeQty, AdjustmentReason reason, String note) {
         InventoryLog log = new InventoryLog();
         log.setProductLot(lot);
         log.setChangeQuantity(changeQty);
-        log.setCurrentQuantity(lot.getQuantity()); // 변경 후 최종 수량 스냅샷
+        log.setCurrentQuantity(lot.getQuantity());
         log.setReason(reason);
         log.setNote(note);
-
         inventoryLogRepository.save(log);
     }
 }

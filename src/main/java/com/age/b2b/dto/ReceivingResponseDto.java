@@ -23,6 +23,7 @@ public class ReceivingResponseDto {
     private int qty;              // 수량
     private long totalPrice;      // 총 금액 (공급가 * 수량)
     private LocalDate expireDate; // 유통기한
+    private LocalDate inboundDate;// 입고일자
     private String stockStatus;   // 재고상태 (정상, 불량 등)
     private String origin;        // 원산지
 
@@ -38,6 +39,7 @@ public class ReceivingResponseDto {
                 // 총 금액 자동 계산
                 .totalPrice((long) lot.getProduct().getSupplyPrice() * lot.getQuantity())
                 .expireDate(lot.getExpiryDate())
+                .inboundDate(lot.getInboundDate())
                 .stockStatus(convertQuality(lot.getStockQuality()))
                 .origin(lot.getProduct().getOrigin())
                 .build();

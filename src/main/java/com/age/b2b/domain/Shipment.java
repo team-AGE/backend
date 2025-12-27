@@ -21,12 +21,12 @@ public class Shipment {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
-    private Order order; // 1:1 관계 (하나의 주문 -> 하나의 출고)
+    private Order order;
 
     private LocalDateTime shippedDate; // 출고일시
 
-    private String courier; // 택배사 (선택)
-    private String trackingNumber; // 운송장번호 (선택)
+    private String courier; // 택배사
+    private String trackingNumber; // 운송장번호
 
     @PrePersist
     public void prePersist() {

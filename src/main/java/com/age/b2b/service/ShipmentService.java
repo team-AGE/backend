@@ -1,14 +1,22 @@
 package com.age.b2b.service;
 
 import com.age.b2b.domain.Order;
+import com.age.b2b.domain.OrderItem;
+import com.age.b2b.domain.ProductLot;
 import com.age.b2b.domain.Shipment;
 import com.age.b2b.domain.common.OrderStatus;
 import com.age.b2b.dto.OrderDetailForShipmentDto;
 import com.age.b2b.dto.ShipmentCreateDto;
 import com.age.b2b.dto.ShipmentItemDto;
+import com.age.b2b.dto.ShipmentListResponseDto;
 import com.age.b2b.repository.OrderRepository;
+import com.age.b2b.repository.ProductLotRepository;
 import com.age.b2b.repository.ShipmentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +30,8 @@ public class ShipmentService {
 
     private final OrderRepository orderRepository;
     private final ShipmentRepository shipmentRepository;
+    private final InventoryService inventoryService;
+    private final ProductLotRepository productLotRepository;
 
     // 1. 화면 진입 시 데이터 조회
     @Transactional(readOnly = true)
@@ -65,6 +75,11 @@ public class ShipmentService {
             throw new IllegalStateException("이미 출고된 주문입니다.");
         }
 
+        // 재고 차감 로직 (FIFO)
+        order.getOrderItems().forEach(item -> {
+            inventoryService.deductStock(item.getProduct().getId(), item.getCount());
+        });
+
         // 출고 생성
         Shipment shipment = new Shipment();
         shipment.setOrder(order);
@@ -76,5 +91,93 @@ public class ShipmentService {
         order.setStatus(OrderStatus.SHIPPED);
 
         return shipment.getId();
+    }
+
+    /**
+     * [본사] 출고 목록 조회 (검색 + 페이징)
+     */
+    @Transactional(readOnly = true)
+    public Page<ShipmentListResponseDto> getShipmentList(String keyword, int page) {
+        Pageable pageable = PageRequest.of(page, 10, Sort.by(Sort.Direction.DESC, "id"));
+
+        Page<Shipment> shipments = shipmentRepository.searchShipments(keyword, pageable);
+
+        return shipments.map(this::convertToDto);
+    }
+
+    /**
+     * [본사] 출고 삭제
+     */
+    public void deleteShipments(List<Long> shipmentIds) {
+        for (Long id : shipmentIds) {
+            Shipment shipment = shipmentRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("출고 정보를 찾을 수 없습니다."));
+
+            Order order = shipment.getOrder();
+
+            // 1. 재고 복구
+            for (OrderItem item : order.getOrderItems()) {
+                inventoryService.restoreStock(item.getProduct().getId(), item.getCount());
+            }
+
+            // 2. 주문 상태 되돌리기
+            order.setStatus(OrderStatus.PREPARING);
+
+            // 3. 출고 내역 삭제
+            shipmentRepository.delete(shipment);
+        }
+    }
+
+    // Entity -> DTO 변환 헬퍼
+    private ShipmentListResponseDto convertToDto(Shipment shipment) {
+        Order order = shipment.getOrder();
+        OrderItem firstItem = order.getOrderItems().isEmpty() ? null : order.getOrderItems().get(0);
+
+        String productCode = "-";
+        String productName = "상품 없음";
+        String origin = "-";
+        String lotNumber = "-";
+        String expiryDate = "-";
+        int totalQty = 0;
+
+        if (firstItem != null) {
+            productCode = firstItem.getProduct().getProductCode();
+            productName = firstItem.getProduct().getName();
+            if (order.getOrderItems().size() > 1) {
+                productName += " 외 " + (order.getOrderItems().size() - 1) + "건";
+            }
+            origin = firstItem.getProduct().getOrigin();
+            totalQty = order.getOrderItems().stream().mapToInt(OrderItem::getCount).sum();
+
+            // 선입선출
+            List<ProductLot> lots = productLotRepository.findByProductIdOrderByExpiryDateAsc(firstItem.getProduct().getId());
+            if (!lots.isEmpty()) {
+                ProductLot repLot = lots.get(0);
+                lotNumber = repLot.getLotNumber();
+                expiryDate = repLot.getExpiryDate().toString();
+            }
+        }
+
+        String shipmentDateStr = "-";
+        if (shipment.getShippedDate() != null) {
+            shipmentDateStr = shipment.getShippedDate().toLocalDate().toString();
+        }
+
+        return ShipmentListResponseDto.builder()
+                .shipmentId(shipment.getId())
+                .shipmentNumber(shipment.getShipmentNumber())
+                .orderNumber(order.getOrderNumber())
+                .orderDate(order.getCreatedAt().toLocalDate().toString())
+                .shipmentDate(shipmentDateStr)
+                .productCode(productCode)
+                .productName(productName)
+                .quantity(totalQty)
+                .lotNumber(lotNumber)
+                .expiryDate(expiryDate)
+                .stockStatus("출고완료")
+                .origin(origin)
+                .address(order.getDeliveryInfo().getAddress())
+                .payment("카드결제")
+                .build();
     }
 }
