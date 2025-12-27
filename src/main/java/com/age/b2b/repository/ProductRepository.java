@@ -16,7 +16,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     boolean existsByProductCode(String productCode);
 
     Optional<Product> findByProductCode(String productCode);
-
+    Optional<Product> findFirstByOrderByCreatedAtDesc();
     // 1. 전체 조회 (정렬은 Pageable에서 처리)
     Page<Product> findAll(Pageable pageable);
 

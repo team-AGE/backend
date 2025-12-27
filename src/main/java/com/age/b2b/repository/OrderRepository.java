@@ -35,6 +35,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             LocalDateTime end
     );
 
+    long countByClientAndStatus(Client client, OrderStatus status);
+
     @Query("SELECT o FROM Order o " +
             "WHERE o.client.clientId = :clientId " +
             "AND o.status <> 'PENDING' " +

@@ -291,7 +291,7 @@ public class OrderService {
         });
     }
 
-    // [본사] 취소 승인
+    // [본사] 취소 승인 (기존 cancelOrdersByAdmin 대신 이것 사용 권장)
     public void approveCancel(List<Long> orderIds) {
         List<Order> orders = orderRepository.findAllById(orderIds);
         for (Order order : orders) {
@@ -303,23 +303,9 @@ public class OrderService {
         }
     }
 
+    // [기존 코드 유지: 강제 취소 등]
     public void cancelOrdersByAdmin(List<Long> orderIds) {
-        List<Order> orders = orderRepository.findAllById(orderIds);
-
-        for (Order order : orders) {
-            if (order.getStatus() == OrderStatus.SHIPPED || order.getStatus() == OrderStatus.DELIVERED) {
-                continue;
-            }
-
-            if (order.getStatus() == OrderStatus.CANCEL_REQUESTED ||
-                    order.getStatus() == OrderStatus.PREPARING ||
-                    order.getStatus() == OrderStatus.PENDING) {
-
-                order.setStatus(OrderStatus.CANCELLED);
-                order.setCanceledAt(LocalDateTime.now());
-                order.setUpdatedAt(LocalDateTime.now());
-            }
-        }
+        approveCancel(orderIds); // 안전하게 위 메서드로 위임
     }
 
     // [파트너] 취소 신청
