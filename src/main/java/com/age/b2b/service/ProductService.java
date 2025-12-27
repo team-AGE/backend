@@ -57,7 +57,13 @@ public class ProductService {
         }
         return productPage.map(ProductResponseDto::from);
     }
-
+    // 신상품 반환 로직
+    @Transactional(readOnly = true)
+    public ProductResponseDto getLatestProduct() {
+        return productRepository.findFirstByOrderByCreatedAtDesc()
+                .map(ProductResponseDto::from)
+                .orElseThrow(() -> new IllegalArgumentException("등록된 상품이 없습니다."));
+    }
     // 1. 상품 등록
     public Long saveProduct(ProductRequestDto dto) {
         // 1. 상품코드 자동 생성 로직 (P + 년월일시분초 + 3자리난수)
