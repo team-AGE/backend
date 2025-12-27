@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder; // ★ 수정됨
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,12 +89,19 @@ public class ClientService {
     }
 
     // 1. 가입 대기 목록 조회
-    public Page<Client> getWaitingList(String keyword, Pageable pageable) {
+    public Page<Client> getRequestList(String keyword, Pageable pageable) {
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "clientId")
+        );
+
         if (keyword != null && !keyword.isEmpty()) {
-            return clientRepository.findAllByApprovalStatusAndBusinessNameContaining(
-                    ClientStatus.WAITING, keyword, pageable);
+            // 이름 검색 (상태 필터링 X)
+            return clientRepository.findByBusinessNameContaining(keyword, sortedPageable);
         }
-        return clientRepository.findAllByApprovalStatus(ClientStatus.WAITING, pageable);
+        // 전체 조회 (상태 필터링 X)
+        return clientRepository.findAll(sortedPageable);
     }
 
     // 2. 가입 승인/거절 처리

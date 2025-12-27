@@ -23,6 +23,8 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     // 가입 승인 대기 중인 목록 조회 (페이징)
     Page<Client> findAllByApprovalStatus(ClientStatus status, Pageable pageable);
 
+    Page<Client> findByBusinessNameContaining(String keyword, Pageable pageable);
+
     Page<Client> findAllByApprovalStatusAndBusinessNameContaining(ClientStatus status, String keyword, Pageable pageable);
 
     // 이메일로 고객사 찾기 (아이디 찾기)

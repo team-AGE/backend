@@ -33,7 +33,7 @@ public class AdminController {
             @RequestParam(required = false) String keyword,
             @PageableDefault(size = 10) Pageable pageable
     ) {
-        Page<Client> list = clientService.getWaitingList(keyword, pageable);
+        Page<Client> list = clientService.getRequestList(keyword, pageable);
         return ResponseEntity.ok(list);
     }
 
