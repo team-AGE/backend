@@ -119,6 +119,7 @@ public class OrderDto {
         private int totalAmount;        // 총 금액
         private String returnReason;    // 반품 사유
         private String status;          // 상태
+        private String returnRequestDate; // 반품 요청일자
         private String statusDate;      // 상태처리일자 (최근 수정일)
     }
 
@@ -127,14 +128,18 @@ public class OrderDto {
     public static class AdminCancelListResponse {
         private Long orderId;
         private String orderNumber;
-        private String orderDate;
-        private String productCode;
-        private String productName;
-        private int supplyPrice;
-        private int quantity;
-        private int totalAmount;
-        private String cancelReason;
-        private String status;
-        private String statusDate;
+        private String orderDate;       // 발주일자 (yyyy-MM-dd)
+
+        private String productName;     // 상품명
+        private String productCode;     // 상품코드
+        private int supplyPrice;        // 공급가
+        private int quantity;           // 수량
+        private int totalAmount;        // 총금액 (공급가 * 수량)
+
+        private String cancelReason;    // 취소사유
+        private String status;          // 상태 (취소요청, 취소완료 등)
+
+        private String cancelRequestDate;    // 취소 요청일
+        private String statusProcessingDate; // 상태 처리일 (승인/거절일)
     }
 }

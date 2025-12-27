@@ -384,6 +384,8 @@ public class OrderService {
                 pageable
         );
 
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
         return orders.map(order -> {
             OrderItem firstItem = order.getOrderItems().isEmpty() ? null : order.getOrderItems().get(0);
             String productName = "상품 없음";
@@ -400,18 +402,32 @@ public class OrderService {
             }
             int totalQty = order.getOrderItems().stream().mapToInt(OrderItem::getCount).sum();
 
+            String reqDate = order.getUpdatedAt() != null ? order.getUpdatedAt().format(formatter) : "-";
+
+            // 2. 상태 처리일: 반품완료(returnedAt) 또는 거절(updatedAt)
+            String procDate = "-";
+            if (order.getStatus() == OrderStatus.RETURNED && order.getReturnedAt() != null) {
+                procDate = order.getReturnedAt().format(formatter);
+            } else if (order.getStatus() == OrderStatus.RETURN_REJECTED) {
+                procDate = order.getUpdatedAt().format(formatter);
+            }
+
             return OrderDto.AdminReturnListResponse.builder()
                     .orderId(order.getId())
                     .orderNumber(order.getOrderNumber())
                     .orderDate(order.getCreatedAt().toLocalDate().toString())
+
                     .productCode(productCode)
                     .productName(productName)
                     .supplyPrice(itemPrice)
                     .quantity(totalQty)
                     .totalAmount(order.getTotalAmount())
+
                     .returnReason(order.getReturnReason())
                     .status(convertStatusToKorean(order.getStatus()))
-                    .statusDate(order.getUpdatedAt().toLocalDate().toString())
+
+                    .returnRequestDate(reqDate)
+                    .statusDate(procDate)
                     .build();
         });
     }
@@ -454,38 +470,63 @@ public class OrderService {
     public Page<OrderDto.AdminCancelListResponse> getAdminCancelList(
             Pageable pageable, String keyword) {
 
+        // 상태 필터링 (취소요청, 취소완료, 취소거절)
         List<OrderStatus> statuses = List.of(
-                OrderStatus.CANCEL_REQUESTED, // 취소 요청
-                OrderStatus.CANCELLED,        // 취소 완료
-                OrderStatus.CANCEL_REJECTED   // 취소 거절
+                OrderStatus.CANCEL_REQUESTED,
+                OrderStatus.CANCELLED,
+                OrderStatus.CANCEL_REJECTED
         );
 
-        Page<Order> orders = orderRepository.findByStatusInAndKeyword(
-                statuses,
-                keyword,
-                pageable
-        );
+        Page<Order> orders = orderRepository.findByStatusInAndKeyword(statuses, keyword, pageable);
+
+        // 날짜 포맷터 (yyyy-MM-dd HH:mm)
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
         return orders.map(order -> {
             OrderItem item = order.getOrderItems().get(0);
+
+            // 상품명 처리 (외 N건)
             String displayName = item.getProduct().getName();
             if (order.getOrderItems().size() > 1) {
                 displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
             }
+
+            // 총 수량 계산
             int totalQty = order.getOrderItems().stream().mapToInt(OrderItem::getCount).sum();
+
+            // ★ 날짜 로직
+            // 1. 취소 요청일: 상태가 변경된 마지막 시간(updatedAt)을 사용 (요청 시점이므로)
+            String reqDate = order.getUpdatedAt() != null ? order.getUpdatedAt().format(formatter) : "-";
+
+            // 2. 상태 처리일:
+            // - 취소완료(승인) -> canceledAt
+            // - 취소거절 -> updatedAt (거절 시점에 업데이트됨)
+            // - 취소요청(대기) -> 아직 처리 안됨 ("-")
+            String procDate = "-";
+            if (order.getStatus() == OrderStatus.CANCELLED && order.getCanceledAt() != null) {
+                procDate = order.getCanceledAt().format(formatter);
+            } else if (order.getStatus() == OrderStatus.CANCEL_REJECTED) {
+                // 거절인 경우, 요청일과 겹칠 수 있으나 로직상 마지막 수정일이 처리일이 됨
+                procDate = order.getUpdatedAt().format(formatter);
+            }
 
             return OrderDto.AdminCancelListResponse.builder()
                     .orderId(order.getId())
                     .orderNumber(order.getOrderNumber())
-                    .orderDate(order.getCreatedAt().toLocalDate().toString())
+                    .orderDate(order.getCreatedAt().toLocalDate().toString()) // 발주일자는 날짜만
+
                     .productCode(item.getProduct().getProductCode())
                     .productName(displayName)
-                    .supplyPrice(item.getPrice())
+                    .supplyPrice(item.getPrice()) // 공급가
                     .quantity(totalQty)
                     .totalAmount(order.getTotalAmount())
+
                     .cancelReason(order.getCancelReason())
                     .status(convertStatusToKorean(order.getStatus()))
-                    .statusDate(order.getUpdatedAt().toLocalDate().toString())
+
+                    // ★ 시간 포함된 날짜 매핑
+                    .cancelRequestDate(reqDate)
+                    .statusProcessingDate(procDate)
                     .build();
         });
     }
