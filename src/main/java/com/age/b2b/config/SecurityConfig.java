@@ -75,7 +75,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // 4. 로그인 설정 (React 연동 핵심)
+                // 4. 로그인 설정
                 .formLogin(login -> login
                         .loginProcessingUrl("/api/login")
                         .usernameParameter("username")
