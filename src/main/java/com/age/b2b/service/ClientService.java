@@ -2,7 +2,9 @@ package com.age.b2b.service;
 
 import com.age.b2b.domain.Client;
 import com.age.b2b.domain.common.ClientStatus;
+import com.age.b2b.dto.ClientMyPageDto;
 import com.age.b2b.dto.ClientSignupDto;
+import com.age.b2b.dto.PasswordDto;
 import com.age.b2b.repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -147,4 +149,44 @@ public class ClientService {
         // 메일 발송 (평문 전송)
         mailService.sendTempPwMail(client.getEmail(), tempPw);
     }
+
+    // 마이페이지 조회
+    public ClientMyPageDto getMyPageData(Client client) {
+        System.out.println("Client 객체 확인: " + client); // DB에서 넘어온 값
+        ClientMyPageDto dto = new ClientMyPageDto();
+
+        dto.setType(client.getClientCategory());
+        dto.setCompany(client.getBusinessName());
+        dto.setNumber(client.getBusinessNumber());
+        dto.setCeo(client.getOwnerName());
+        dto.setPhone(client.getPhone());
+        dto.setUsername(client.getUsername());
+        dto.setEmail(client.getEmail());
+        dto.setAddress(client.getAddress());
+        dto.setDetailAddress(client.getDetailAddress());
+        dto.setBizFileName(client.getBusinessLicensePath() != null ?
+                new File(client.getBusinessLicensePath()).getName() : null);
+
+        System.out.println("ClientMyPageDto 확인: " + dto); // 서비스에서 만들어진 DTO
+
+        return dto;
+    }
+
+    // 마이페이지 비밀번호 변경
+    @Transactional
+    public void updatePassword(Client client, PasswordDto update) {
+        // 1. 현재 비밀번호 확인
+        if (!passwordEncoder.matches(update.getCurrentPassword(), client.getPassword())) {
+            throw new IllegalArgumentException("현재 비밀번호가 올바르지 않습니다.");
+        }
+
+        // 2. 새 비밀번호 확인
+        if (!update.getNewPassword().equals(update.getNewPasswordConfirm())) {
+            throw new IllegalArgumentException("새 비밀번호가 일치하지 않습니다.");
+        }
+
+        // 3. 비밀번호 업데이트
+        client.setPassword(passwordEncoder.encode(update.getNewPassword()));
+    }
+
 }

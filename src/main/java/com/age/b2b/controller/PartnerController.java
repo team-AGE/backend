@@ -1,21 +1,26 @@
 package com.age.b2b.controller;
 
 import com.age.b2b.config.auth.PrincipalDetails;
-import com.age.b2b.dto.CartDto; // DTO import 확인
-import com.age.b2b.dto.OrderDto;
-import com.age.b2b.dto.ProductResponseDto;
+import com.age.b2b.domain.Client;
+import com.age.b2b.domain.ProductLot;
+import com.age.b2b.dto.*;
 import com.age.b2b.service.CartService;
+import com.age.b2b.service.ClientService;
 import com.age.b2b.service.OrderService;
 import com.age.b2b.service.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
+import java.net.MalformedURLException;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +32,7 @@ public class PartnerController {
     private final ProductService productService;
     private final CartService cartService;
     private final OrderService orderService;
+    private final ClientService clientService;  // ClientService 객체를 컨트롤러에 주입
 
     // 1. 상품 목록 조회
     @GetMapping("/product/list")
@@ -159,4 +165,61 @@ public class PartnerController {
         // 예: [{label: "결제완료", count: 5, color: "#237d31"}, ...]
         return ResponseEntity.ok(orderService.getDashboardStats(principal.getClient()));
     }
+
+    // 8. 마이페이지 조회
+    @GetMapping("/mypage")
+    public ResponseEntity<ClientMyPageDto> getMyPage(
+            // 로그인한 사용자의 Client 객체를 바로 가져오기 위해 사용
+            @AuthenticationPrincipal PrincipalDetails principal
+    ) {
+        // 1. Spring Security가 UserDetailsService의 loadUserByUsername() 호출
+        // 2. loadUserByUsername()에서 Repository를 사용해 DB에서 사용자 정보 조회 (Client 엔티티)
+        // 3. 조회한 Client 엔티티를 기반으로 UserDetails 의 PrincipalDetails 객체 생성
+        // 4. 생성된 PrincipalDetails 객체가 Security Context에 저장
+        Client client = principal.getClient();  // 이미 로그인 시점에 로딩된 Client 객체
+        ClientMyPageDto dto = clientService.getMyPageData(client); // 서비스에서 DTO 생성
+
+        System.out.println("Controller 반환 데이터: " + dto); // 실제 Response에 들어가는 값
+        return ResponseEntity.ok(dto);
+    }
+
+    // 9. 마이페이지 사업자 등록증 조회
+    @GetMapping("/mypage/file")
+    public ResponseEntity<Resource> viewBizFile(@RequestParam String filename) throws MalformedURLException {
+        // 서비스 호출 -> 파일 객체(Resource) 가져오기
+        // Resource는 Spring에서 파일, 클래스패스, URL 등 다양한 외부 자원을 추상화해서 다루기 위한 객체
+        // MalformedURLException = 잘못된 파일 경로나 이름 예외처리
+        Resource fileResource = clientService.getBusinessLicenseImage(filename);
+
+        // 파일 확장자를 보고 타입을 자동으로 판단 (image/jpeg 등)
+        String contentType = "image/jpeg"; // 기본값 설정
+        try {
+            // 파일 객체로부터 실제 마임타입을 추론
+            File file = fileResource.getFile();
+            contentType = java.nio.file.Files.probeContentType(file.toPath());
+        } catch (Exception e) {
+            // 예외 시 기본값 유지
+        }
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, contentType) // ★ 이 줄이 추가되어야 이미지가 보입니다!
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .body(fileResource); // 파일 반환
+    }
+
+    // 10. 마이페이지 패스워드 변경
+    @PutMapping("/mypage")
+    public ResponseEntity<String> updatePassword(
+            // 로그인한 사용자의 Client 객체를 바로 가져오기 위해 사용
+            @AuthenticationPrincipal PrincipalDetails principal,
+            @RequestBody PasswordDto update
+    ) {
+        try {
+            clientService.updatePassword(principal.getClient(), update);
+            return ResponseEntity.ok("마이페이지 정보가 변경되었습니다.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
 }
