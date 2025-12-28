@@ -206,18 +206,50 @@ public class OrderService {
 
         Page<Order> orders = orderRepository.searchClientOrders(client.getClientId(), start, end, keyword, pageable);
 
+        // 날짜 포맷터
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
         return orders.map(order -> {
             OrderItem firstItem = order.getOrderItems().isEmpty() ? null : order.getOrderItems().get(0);
-            String displayName = (firstItem != null) ? firstItem.getProduct().getName() : "상품 정보 없음";
+
+            // 대표 상품 정보 조회 (상품코드, 상품명, 가격)
+            String displayName = "상품 정보 없음";
+            String productCode = "-";
+            int productPrice = 0;
+
+            if (firstItem != null) {
+                displayName = firstItem.getProduct().getName();
+                productCode = firstItem.getProduct().getProductCode(); // ★ 상품코드 가져오기
+                productPrice = firstItem.getProduct().getSupplyPrice(); // ★ 단가 가져오기
+            }
+
+            // "상품명 외 N건" 처리
             if (order.getOrderItems().size() > 1) {
                 displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
+            }
+
+            // 총 수량 계산 (모든 아이템의 count 합계)
+            int totalQty = order.getOrderItems().stream()
+                    .mapToInt(OrderItem::getCount)
+                    .sum();
+
+            // 배송완료일자 처리
+            String deliveryDateStr = "-";
+            if (order.getStatus() == OrderStatus.DELIVERED && order.getDeliveryCompletedAt() != null) {
+                deliveryDateStr = order.getDeliveryCompletedAt().format(formatter);
             }
 
             return OrderDto.PartnerOrderListResponse.builder()
                     .orderId(order.getId())
                     .orderNumber(order.getOrderNumber())
                     .createdAt(order.getCreatedAt().toString().replace("T", " ").substring(0, 16))
-                    .repProductName(displayName) // orderName 필드가 없으므로 기존 필드 활용
+
+                    .repProductCode(productCode)
+                    .repProductName(displayName)
+                    .repProductPrice(productPrice)
+                    .totalQuantity(totalQty)
+                    .deliveryDate(deliveryDateStr)
+
                     .itemCount(order.getOrderItems().size())
                     .totalAmount(order.getTotalAmount())
                     .status(convertStatusToKorean(order.getStatus()))

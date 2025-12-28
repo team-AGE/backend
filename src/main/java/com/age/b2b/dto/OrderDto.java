@@ -50,6 +50,7 @@ public class OrderDto {
 
     // 4. 파트너 주문 목록 조회용 DTO
     @Getter @Builder @AllArgsConstructor
+    @NoArgsConstructor
     public static class PartnerOrderListResponse {
         private Long orderId;           // PK (모달 조회용)
         private String orderNumber;     // 주문번호
