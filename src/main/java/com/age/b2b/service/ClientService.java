@@ -3,6 +3,7 @@ package com.age.b2b.service;
 import com.age.b2b.domain.Client;
 import com.age.b2b.domain.common.ClientStatus;
 import com.age.b2b.dto.ClientMyPageDto;
+import com.age.b2b.dto.ClientMyPageUpdateDto;
 import com.age.b2b.dto.ClientSignupDto;
 import com.age.b2b.dto.PasswordDto;
 import com.age.b2b.repository.ClientRepository;
@@ -175,18 +176,35 @@ public class ClientService {
     // 마이페이지 비밀번호 변경
     @Transactional
     public void updatePassword(Client client, PasswordDto update) {
-        // 1. 현재 비밀번호 확인
-        if (!passwordEncoder.matches(update.getCurrentPassword(), client.getPassword())) {
+
+        Client managedClient = clientRepository.findById(client.getClientId())
+                .orElseThrow(() -> new IllegalArgumentException("고객사 정보 없음"));
+
+        if (!passwordEncoder.matches(update.getCurrentPassword(), managedClient.getPassword())) {
             throw new IllegalArgumentException("현재 비밀번호가 올바르지 않습니다.");
         }
 
-        // 2. 새 비밀번호 확인
         if (!update.getNewPassword().equals(update.getNewPasswordConfirm())) {
             throw new IllegalArgumentException("새 비밀번호가 일치하지 않습니다.");
         }
 
-        // 3. 비밀번호 업데이트
-        client.setPassword(passwordEncoder.encode(update.getNewPassword()));
+        managedClient.setPassword(passwordEncoder.encode(update.getNewPassword()));
+
+        // 명시적 save (안 해도 되지만 가독성 + 안정성 ↑)
+        clientRepository.save(managedClient);
     }
+    // 마이페이지 수정
+    @Transactional
+    public void updateProfile(Client client, ClientMyPageUpdateDto dto) {
+
+        Client managedClient = clientRepository.findById(client.getClientId())
+                .orElseThrow(() -> new IllegalArgumentException("고객사 정보 없음"));
+
+        managedClient.setEmail(dto.getEmail());
+        managedClient.setPhone(dto.getPhone());
+
+        clientRepository.save(managedClient);
+    }
+
 
 }

@@ -111,7 +111,7 @@ public class OrderService {
         orderRepository.save(order);
 
         String orderName = firstProductName;
-        if (itemsCount > 1) orderName += " 외 " + (itemsCount - 1) + "건";
+        //if (itemsCount > 1) orderName += " 외 " + (itemsCount - 1) + "건";
 
         return OrderDto.OrderResponse.builder()
                 .orderNumber(order.getOrderNumber())
@@ -224,9 +224,9 @@ public class OrderService {
             }
 
             // "상품명 외 N건" 처리
-            if (order.getOrderItems().size() > 1) {
-                displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
-            }
+           // if (order.getOrderItems().size() > 1) {
+           //     displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
+          //  }
 
             // 총 수량 계산 (모든 아이템의 count 합계)
             int totalQty = order.getOrderItems().stream()
@@ -310,7 +310,7 @@ public class OrderService {
             OrderItem firstItem = order.getOrderItems().isEmpty() ? null : order.getOrderItems().get(0);
             String displayName = (firstItem != null) ? firstItem.getProduct().getName() : "상품 정보 없음";
             if (order.getOrderItems().size() > 1) {
-                displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
+               // displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
             }
 
             return OrderDto.AdminOrderListResponse.builder()
@@ -429,7 +429,7 @@ public class OrderService {
                 productName = firstItem.getProduct().getName();
                 itemPrice = firstItem.getPrice();
                 if (order.getOrderItems().size() > 1) {
-                    productName += " 외 " + (order.getOrderItems().size() - 1) + "건";
+                   // productName += " 외 " + (order.getOrderItems().size() - 1) + "건";
                 }
             }
             int totalQty = order.getOrderItems().stream().mapToInt(OrderItem::getCount).sum();
@@ -520,7 +520,7 @@ public class OrderService {
             // 상품명 처리 (외 N건)
             String displayName = item.getProduct().getName();
             if (order.getOrderItems().size() > 1) {
-                displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
+               // displayName += " 외 " + (order.getOrderItems().size() - 1) + "건";
             }
 
             // 총 수량 계산
